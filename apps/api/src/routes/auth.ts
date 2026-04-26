@@ -5,19 +5,22 @@ import { requireAuth, AuthRequest } from "../middleware/requireAuth";
 
 const router = Router();
 
-// POST /api/auth/sync — no auth required, called on every app launch
-router.post("/sync", async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { clerkId, name, email } = req.body as {
-      clerkId: string;
-      name: string;
-      email: string;
-    };
+// POST /api/auth/sync — requires auth, called on every app launch
+router.post(
+  "/sync",
+  requireAuth,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { name, email } = req.body as {
+        name: string;
+        email: string;
+      };
 
-    if (!clerkId || !name || !email) {
-      res.status(400).json({ error: "clerkId, name, and email are required" });
-      return;
-    }
+      const clerkId = req.clerkId; // Extract from verified JWT, not from request body
+      if (!clerkId || !name || !email) {
+        res.status(400).json({ error: "name and email are required, clerkId extracted from JWT" });
+        return;
+      }
 
     const result = await User.findOneAndUpdate(
       { clerkId },
@@ -42,7 +45,8 @@ router.post("/sync", async (req: Request, res: Response): Promise<void> => {
   } catch (err) {
     throw err;
   }
-});
+  }
+);
 
 // POST /api/auth/onboarding — requires auth
 router.post(

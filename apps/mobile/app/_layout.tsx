@@ -47,7 +47,6 @@ function RootLayoutNav() {
       try {
         const primaryEmail = user.emailAddresses[0]?.emailAddress || "";
         const result = await api.syncUser({
-          clerkId: user.id,
           name: user.fullName || user.firstName || "User",
           email: primaryEmail,
         });

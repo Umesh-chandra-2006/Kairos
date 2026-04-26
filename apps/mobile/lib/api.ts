@@ -82,7 +82,7 @@ export interface SubmitResult {
 }
 
 export const api = {
-  syncUser: (data: { clerkId: string; name: string; email: string }) =>
+  syncUser: (data: { name: string; email: string }) =>
     request<{ user: User }>("/api/auth/sync", {
       method: "POST",
       body: JSON.stringify(data),

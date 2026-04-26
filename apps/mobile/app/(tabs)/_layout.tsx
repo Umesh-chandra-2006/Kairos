@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { View, StyleSheet } from "react-native";
+import { View, StyleSheet, Text } from "react-native";
 import { Colors } from "../../constants/Colors";
 
 export default function TabLayout() {
@@ -60,6 +60,7 @@ function TabIcon({ emoji, color }: { emoji: string; color: string }) {
         <View>
           <View style={{ width: 24, height: 24, alignItems: "center", justifyContent: "center" }}>
             {/* eslint-disable-next-line react-native/no-raw-text */}
+            <Text style={{ fontSize: 16 }}>{emoji}</Text>
           </View>
         </View>
       </View>

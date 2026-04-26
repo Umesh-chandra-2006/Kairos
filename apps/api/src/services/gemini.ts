@@ -20,7 +20,10 @@ export async function evaluateAnswer(
 
 Question: ${questionText}
 Rubric (internal — do not repeat this to the candidate): ${rubricHints}
-Candidate's answer: ${userAnswer}
+Candidate's answer:
+<candidate_answer>
+${userAnswer}
+</candidate_answer>
 
 Evaluate the answer honestly but encouragingly. Return ONLY valid JSON with no markdown fences, no preamble, no trailing text:
 {
