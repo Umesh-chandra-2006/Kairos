@@ -1,78 +1,82 @@
-# Kairos
+# Kairos: The Ultimate Technical Interview Mastery Platform 🚀
 
-> Answer one AI-evaluated interview question per day. Keep your streak. Master your interviews.
+Kairos is a premium, AI-powered interview preparation platform designed to turn candidates into high-performing engineers. With a focus on consistency, depth, and expert feedback, Kairos helps you build the daily habit of excellence.
 
-## Stack
+![Kairos Dashboard](https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=2070)
 
-| Layer | Tech |
-|---|---|
-| Mobile | React Native (Expo SDK 54, Expo Router) |
-| Backend | Node.js + Express + TypeScript |
-| Database | MongoDB Atlas (Mongoose) |
-| AI | Google Gemini (`gemini-2.0-flash`) |
-| Auth | Clerk |
-| Push Notifications | Expo Notifications (EAS Dev Build) |
+## ✨ Core Features
+
+### 📅 Deterministic Daily Ritual
+Every user on the platform receives the **exact same high-impact technical challenge** every 24 hours. Join the global conversation and master core concepts alongside thousands of other engineers.
+
+### 🎯 Targeted Practice Hub
+Choose from **19 specialized technical categories** including:
+- **Core**: DSA, OS, DBMS, Networks, OOP, System Design
+- **Full Stack**: Frontend, Backend, FullStack
+- **Modern Tech**: Cloud, Security, DevOps, Mobile, Machine Learning
+- **Professional**: HR, Agile, Product Management
+
+### 🤖 AI-Powered Evaluation
+Get instant, expert-level feedback on every response. Our AI evaluates:
+- **Technical Accuracy**: Depth of understanding.
+- **Clarity**: Ability to communicate complex ideas.
+- **Trade-offs**: Consideration of technical pros and cons.
+- **Model Answers**: Compare your response with a "Perfect Answer" drafted by industry experts.
+
+### 📈 Progress & Analytics
+- **Day Streaks**: Build momentum and never miss a day.
+- **Skill Map**: Visualize your growth across different domains.
+- **History**: Review past answers and track your improvement over time.
+
+## 🛠️ Technology Stack
+
+- **Frontend**: React 19, Vite, TailwindCSS, Framer Motion, Lucide React
+- **Backend**: Node.js (Express), Drizzle ORM
+- **Database**: MySQL
+- **AI Integration**: Claude 3.5 Sonnet / GPT-4 via OpenRouter
+- **Authentication**: Native Custom Auth System
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js (v18+)
+- MySQL Instance
+- OpenRouter API Key
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Umesh-chandra-2006/Kairos.git
+   cd Kairos
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Configure Environment**
+   Create a `.env` file in the root:
+   ```env
+   DATABASE_URL=mysql://user:pass@localhost:3306/kairos
+   JWT_SECRET=your_super_secret_key
+   OPENROUTER_API_KEY=your_key
+   ```
+
+4. **Initialize Database**
+   ```bash
+   npm run db:push
+   npm run seed
+   ```
+
+5. **Start Development**
+   ```bash
+   npm run dev
+   ```
+
+## 📄 License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
-
-## Setup
-
-### 1. Backend
-
-```bash
-cd apps/api
-cp .env.example .env
-# Fill in MONGODB_URI, GEMINI_API_KEY, CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY
-npm install
-npm run seed        # Seeds 30 interview questions
-npm run dev         # Starts on port 3000
-```
-
-### 2. Mobile
-
-```bash
-cd apps/mobile
-cp .env.example .env
-# Fill in EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY
-# Set EXPO_PUBLIC_API_URL to your backend URL
-npm install
-npx expo start      # Scan QR with Expo Go (or dev build for push notifications)
-```
-
-### 3. EAS Dev Build (for Push Notifications)
-
-```bash
-cd apps/mobile
-npm install -g eas-cli
-eas login
-eas build --profile development --platform android   # or ios
-```
-
----
-
-## API Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| POST | `/api/auth/sync` | Upsert user on login |
-| POST | `/api/auth/onboarding` | Save profile preferences |
-| GET | `/api/question/today` | Get today's question |
-| POST | `/api/answer/submit` | Submit answer → Gemini eval |
-| GET | `/api/answer/history` | All past answers |
-| GET | `/api/streak` | Current streak info |
-| POST | `/api/streak/freeze` | Use streak freeze |
-
----
-
-## Screens
-
-| Screen | Route | Description |
-|---|---|---|
-| Sign In | `/(auth)/sign-in` | Clerk email/password |
-| Sign Up | `/(auth)/sign-up` | Clerk email + verification |
-| Onboarding | `/onboarding` | Role, level, targets, notification time |
-| Home | `/(tabs)/` | Today's question or completed state |
-| Answer | `/answer` | Write and submit answer |
-| Result | `/result` | Score, feedback, model answer |
-| History | `/(tabs)/history` | All past answers (accordion) |
-| Profile | `/(tabs)/profile` | Stats, preferences, freeze, sign out |
+*Built with ❤️ for the engineering community.*
