@@ -1,0 +1,50 @@
+import { Navigate, Route, Routes } from "react-router-dom";
+import { useAuth } from "./auth/AuthContext";
+import { Layout } from "./components/Layout";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { Dashboard } from "./pages/Dashboard";
+import { ForgotPassword } from "./pages/ForgotPassword";
+import { History } from "./pages/History";
+import { Leaderboard } from "./pages/Leaderboard";
+import { Login } from "./pages/Login";
+import { Onboarding } from "./pages/Onboarding";
+import { Register } from "./pages/Register";
+import { ResetPassword } from "./pages/ResetPassword";
+import { Settings } from "./pages/Settings";
+import { Streak } from "./pages/Streak";
+import { VerifyEmail } from "./pages/VerifyEmail";
+
+export function App() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div className="center-screen">Loading…</div>;
+  }
+
+  return (
+    <Routes>
+      <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/register" element={user ? <Navigate to="/" replace /> : <Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
+
+      <Route
+        element={
+          <ProtectedRoute>
+            <Layout />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="/" element={user && !user.profile ? <Navigate to="/onboarding" replace /> : <Dashboard />} />
+        <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/streak" element={<Streak />} />
+        <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/history" element={<History />} />
+        <Route path="/settings" element={<Settings />} />
+      </Route>
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}

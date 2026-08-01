@@ -1,0 +1,33 @@
+{
+  "name": "@kairos/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema.ts",
+    "./client": "./src/client.ts"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
+    "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
+    "db:push": "drizzle-kit push --config=drizzle.config.ts",
+    "db:seed": "tsx src/seed/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "echo db:no-lint"
+  },
+  "dependencies": {
+    "@kairos/config": "workspace:*",
+    "@kairos/shared": "workspace:*",
+    "drizzle-orm": "^0.44.5",
+    "mysql2": "^3.15.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.0",
+    "drizzle-kit": "^0.31.4",
+    "tsx": "^4.19.1",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.4"
+  }
+}
