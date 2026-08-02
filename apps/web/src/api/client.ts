@@ -165,7 +165,44 @@ export const api = {
   // ---- Leaderboard ----
   leaderboard: () => api.get<LeaderboardResponse>("/api/leaderboard"),
   myRank: () => api.get<UserRank>("/api/leaderboard/me/rank"),
+
+  // ---- Push notifications ----
+  vapidPublicKey: () => api.get<{ publicKey: string | null }>("/api/notifications/vapid-public-key"),
+  pushSubscriptions: () =>
+    api.get<{ subscriptions: { channel: string; token: string; createdAt: string }[] }>("/api/notifications/subscriptions"),
+  subscribePush: (subscription: { token: string; keys: { p256dh: string; auth: string } }) =>
+    api.post<{ ok: true }>("/api/notifications/push-subscriptions", { channel: "web", ...subscription }),
+  unsubscribePush: (token: string) => api.del<{ ok: true }>("/api/notifications/push-subscriptions", { token }),
 };
+
+/** Converts a base64url VAPID key into a Uint8Array for pushManager.subscribe. */
+export function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
+  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+  const base64url = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64url);
+  const output = new Uint8Array(new ArrayBuffer(raw.length));
+  for (let i = 0; i < raw.length; i++) output[i] = raw.charCodeAt(i);
+  return output;
+}
+
+/** Best-effort cleanup of the current browser's web push subscription on logout. */
+export async function unregisterWebPush(): Promise<void> {
+  try {
+    const { subscriptions } = await api.pushSubscriptions();
+    const web = subscriptions.filter((s) => s.channel === "web");
+    await Promise.all(web.map((s) => api.unsubscribePush(s.token)));
+  } catch {
+    /* best effort */
+  }
+  try {
+    if ("serviceWorker" in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration("/sw.js");
+      await reg?.unregister();
+    }
+  } catch {
+    /* best effort */
+  }
+}
 
 /** Consumes the answer SSE stream, invoking callbacks per event type. */
 export function connectAnswerStream(

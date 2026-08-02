@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { api } from "../api/client";
+import { WebPushCard } from "../components/WebPushCard";
 import { ErrorBanner, Field, SuccessBanner } from "../components/forms";
 
 interface Prefs {
@@ -105,6 +106,8 @@ export function Settings() {
           </button>
         </form>
       </div>
+
+      <WebPushCard />
 
       <div className="card">
         <h2 className="card-title">Change password</h2>

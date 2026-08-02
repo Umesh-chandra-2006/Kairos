@@ -38,6 +38,21 @@ notificationsRouter.put(
   }),
 );
 
+notificationsRouter.get(
+  "/vapid-public-key",
+  asyncHandler(async (_req, res) => {
+    res.json({ publicKey: notificationService.vapidPublicKey() });
+  }),
+);
+
+notificationsRouter.get(
+  "/subscriptions",
+  asyncHandler(async (req, res) => {
+    const db = getDb();
+    res.json({ subscriptions: await notificationService.listPush(db, req.userId!) });
+  }),
+);
+
 notificationsRouter.post(
   "/push-subscriptions",
   validate(pushSubscribeSchema),

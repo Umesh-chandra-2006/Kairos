@@ -105,4 +105,40 @@ describe("notification scheduler", () => {
     await request(getApp()).get("/api/notifications/prefs").expect(401);
     await request(getApp()).post("/api/notifications/push-subscriptions").send({ channel: "expo", token: "t" }).expect(401);
   });
+
+  it("exposes the VAPID public key (or null when unconfigured)", async () => {
+    const { accessToken } = await registerUser(uniqueEmail("n_vapid"));
+    const res = await request(getApp())
+      .get("/api/notifications/vapid-public-key")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .expect(200);
+    expect("publicKey" in res.body).toBe(true);
+    expect(res.body.publicKey === null || typeof res.body.publicKey === "string").toBe(true);
+  });
+
+  it("lists the user's push subscriptions", async () => {
+    const { accessToken } = await registerUser(uniqueEmail("n_list"));
+
+    const empty = await request(getApp())
+      .get("/api/notifications/subscriptions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .expect(200);
+    expect(empty.body.subscriptions).toEqual([]);
+
+    await request(getApp())
+      .post("/api/notifications/push-subscriptions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ channel: "web", token: "https://example.com/push-list", keys: { p256dh: "x", auth: "y" } })
+      .expect(201);
+
+    const res = await request(getApp())
+      .get("/api/notifications/subscriptions")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .expect(200);
+    expect(res.body.subscriptions).toHaveLength(1);
+    expect(res.body.subscriptions[0]).toMatchObject({
+      channel: "web",
+      token: "https://example.com/push-list",
+    });
+  });
 });

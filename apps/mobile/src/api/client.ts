@@ -14,6 +14,7 @@ import type {
 import {
   clearTokens,
   getAccessToken,
+  getExpoPushToken,
   getRefreshToken,
   saveRefreshToken,
   saveTokens,
@@ -139,9 +140,17 @@ export const api = {
   },
   logout: async () => {
     const refreshToken = await getRefreshToken();
+    const pushToken = await getExpoPushToken();
     try {
       await api.post<{ ok: true }>("/api/auth/logout", { device: "mobile", refreshToken });
     } finally {
+      if (pushToken) {
+        try {
+          await api.del<{ ok: true }>("/api/notifications/push-subscriptions", { token: pushToken });
+        } catch {
+          /* best effort */
+        }
+      }
       await clearTokens();
       accessToken = null;
     }
@@ -193,6 +202,13 @@ export const api = {
   // ---- Leaderboard ----
   leaderboard: () => api.get<LeaderboardResponse>("/api/leaderboard"),
   myRank: () => api.get<UserRank>("/api/leaderboard/me/rank"),
+
+  // ---- Push notifications ----
+  pushSubscriptions: () =>
+    api.get<{ subscriptions: { channel: string; token: string; createdAt: string }[] }>("/api/notifications/subscriptions"),
+  subscribePush: (token: string) =>
+    api.post<{ ok: true }>("/api/notifications/push-subscriptions", { channel: "expo", token }),
+  unsubscribePush: (token: string) => api.del<{ ok: true }>("/api/notifications/push-subscriptions", { token }),
 };
 
 /** Consumes the answer SSE stream (react-native-sse), invoking handlers per event type. */

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { OnboardingInput, PublicUser } from "@kairos/shared";
-import { api, getAccessToken, setAccessToken } from "../api/client";
+import { api, getAccessToken, setAccessToken, unregisterWebPush } from "../api/client";
 
 interface AuthContextValue {
   user: PublicUser | null;
@@ -67,6 +67,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    try {
+      await unregisterWebPush();
+    } catch {
+      /* best effort */
+    }
     try {
       await api.logout();
     } finally {

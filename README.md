@@ -100,6 +100,26 @@ pnpm docker:up / pnpm docker:down
   drains it to Expo push / web push / email with retries and a dead-letter cap.
 - **Leaderboard**: aggregated from daily answer scores with the caller's rank.
 
+## Push notifications
+
+Push is wired end-to-end on both clients; the server delivers via an outbox
+(Expo push for mobile, Web Push VAPID for browser). To actually receive
+notifications you need two things configured:
+
+1. **Web (VAPID keys)** — set `WEB_PUSH_PUBLIC_KEY` / `WEB_PUSH_PRIVATE_KEY`
+   in `.env` (generate with the command in `.env.example`). The browser then
+   shows an "Enable browser notifications" button in **Settings**; it registers
+   a service worker (`apps/web/public/sw.js`) and posts the subscription to
+   `POST /api/notifications/push-subscriptions`. Without keys, the card reports
+   "not configured" and delivery dry-runs.
+2. **Mobile (Expo push)** — set `EXPO_PUBLIC_EAS_PROJECT_ID` to your EAS
+   project ID. The **Settings** tab shows "Enable push notifications", which
+   requests permission, gets an Expo push token, and registers it with the API.
+   Without a project ID the button explains what to set.
+
+Both clients list/remove subscriptions on logout via
+`GET /api/notifications/subscriptions`.
+
 ## CI
 
 `.github/workflows/ci.yml` runs typecheck, API tests, and production builds on

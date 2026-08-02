@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { getEnv } from "@kairos/config";
 import { type DB } from "@kairos/db";
 import {
   notificationPrefs,
@@ -57,6 +58,20 @@ export const notificationService = {
 
   async unregisterPush(db: DB, userId: number, token: string) {
     await db.delete(pushSubscriptions).where(and(eq(pushSubscriptions.userId, userId), eq(pushSubscriptions.token, token)));
+  },
+
+  async listPush(db: DB, userId: number) {
+    const rows = await db
+      .select({ channel: pushSubscriptions.channel, token: pushSubscriptions.token, createdAt: pushSubscriptions.createdAt })
+      .from(pushSubscriptions)
+      .where(eq(pushSubscriptions.userId, userId))
+      .orderBy(pushSubscriptions.createdAt);
+    return rows;
+  },
+
+  vapidPublicKey(): string | null {
+    const { WEB_PUSH_PUBLIC_KEY } = getEnv();
+    return WEB_PUSH_PUBLIC_KEY || null;
   },
 
   async enqueueOutbox(db: DB, data: InsertNotificationOutbox) {
