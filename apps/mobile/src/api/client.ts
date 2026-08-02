@@ -5,6 +5,7 @@ import type {
   LeaderboardResponse,
   OnboardingInput,
   PublicUser,
+  Question,
   QuestionListResponse,
   Streak,
   TodayQuestionResponse,
@@ -156,6 +157,12 @@ export const api = {
 
   // ---- Questions & answers ----
   today: () => api.get<TodayQuestionResponse>("/api/questions/today"),
+  practice: (category?: string) => {
+    const qs = new URLSearchParams();
+    if (category) qs.set("category", category);
+    const query = qs.toString();
+    return api.get<{ question: Question }>(`/api/questions/practice${query ? `?${query}` : ""}`);
+  },
   questions: (params?: { category?: string; difficulty?: string; cursor?: number; limit?: number }) => {
     const qs = new URLSearchParams();
     if (params?.category) qs.set("category", params.category);
@@ -167,6 +174,8 @@ export const api = {
   },
   submitAnswer: (questionId: number, answerText: string) =>
     api.post<{ answerId: number }>("/api/answers/submit", { questionId, answerText }),
+  submitPractice: (questionId: number, answerText: string) =>
+    api.post<{ answerId: number }>("/api/answers/practice", { questionId, answerText }),
   answer: (id: number) => api.get<{ answer: AnswerWithQuestion }>(`/api/answers/${id}`),
   history: (cursor?: number, limit = 20) => {
     const qs = new URLSearchParams();

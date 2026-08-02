@@ -12,6 +12,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="today" options={{ title: "Today" }} />
+      <Tabs.Screen name="practice" options={{ title: "Practice" }} />
       <Tabs.Screen name="streak" options={{ title: "Streak" }} />
       <Tabs.Screen name="leaderboard" options={{ title: "Leaderboard" }} />
       <Tabs.Screen name="history" options={{ title: "History" }} />

@@ -8,6 +8,7 @@ import { History } from "./pages/History";
 import { Leaderboard } from "./pages/Leaderboard";
 import { Login } from "./pages/Login";
 import { Onboarding } from "./pages/Onboarding";
+import { Practice } from "./pages/Practice";
 import { Register } from "./pages/Register";
 import { ResetPassword } from "./pages/ResetPassword";
 import { Settings } from "./pages/Settings";
@@ -38,6 +39,7 @@ export function App() {
       >
         <Route path="/" element={user && !user.profile ? <Navigate to="/onboarding" replace /> : <Dashboard />} />
         <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/practice" element={<Practice />} />
         <Route path="/streak" element={<Streak />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/history" element={<History />} />

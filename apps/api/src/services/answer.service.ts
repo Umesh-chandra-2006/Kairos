@@ -12,6 +12,7 @@ function toAnswerWithQuestion(row: typeof answers.$inferSelect, q: typeof questi
     id: row.id,
     questionId: row.questionId,
     date: row.date,
+    isPractice: row.dailyKey === null,
     answerText: row.answerText,
     score: row.score,
     feedback: row.feedback,
@@ -37,7 +38,7 @@ export const answerService = {
     const [existing] = await db
       .select({ id: answers.id })
       .from(answers)
-      .where(and(eq(answers.userId, userId), eq(answers.date, date)));
+      .where(and(eq(answers.userId, userId), eq(answers.dailyKey, date)));
     if (existing) throw AppError.conflict("You have already answered today's question");
 
     const question = await questionService.getById(db, input.questionId);
@@ -49,6 +50,31 @@ export const answerService = {
         userId,
         questionId: input.questionId,
         date,
+        dailyKey: date,
+        answerText: input.answerText,
+        status: "pending",
+      })
+      .$returningId();
+
+    const answerId = inserted!.id;
+    const { queue } = getRuntime();
+    await queue.enqueue({ answerId, userId, questionId: input.questionId, attempt: 0 });
+
+    return answerId;
+  },
+
+  /** Practice submission: no dailyKey (so it never conflicts with the daily answer). */
+  async submitPractice(db: DB, userId: number, input: SubmitAnswerInput) {
+    const date = dateStr();
+    await questionService.getById(db, input.questionId);
+
+    const [inserted] = await db
+      .insert(answers)
+      .values({
+        userId,
+        questionId: input.questionId,
+        date,
+        dailyKey: null,
         answerText: input.answerText,
         status: "pending",
       })

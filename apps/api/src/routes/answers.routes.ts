@@ -26,6 +26,17 @@ answersRouter.post(
   }),
 );
 
+answersRouter.post(
+  "/practice",
+  aiRateLimit(),
+  validate(submitAnswerSchema),
+  asyncHandler(async (req, res) => {
+    const db = getDb();
+    const answerId = await answerService.submitPractice(db, req.userId!, req.body);
+    res.status(201).json({ answerId });
+  }),
+);
+
 answersRouter.get(
   "/",
   validate(historyQuerySchema, "query"),

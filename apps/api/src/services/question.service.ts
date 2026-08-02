@@ -20,23 +20,27 @@ function dateSeed(date: string): number {
   return Number(date.replace(/\D/g, ""));
 }
 
-async function loadAllActive(db: DB): Promise<QuestionRow[]> {
-  return db.select().from(questions).where(eq(questions.isActive, true));
+/** All active questions available for the daily challenge (non practice-only). */
+async function loadDailyPool(db: DB): Promise<QuestionRow[]> {
+  return db
+    .select()
+    .from(questions)
+    .where(and(eq(questions.isActive, true), eq(questions.practiceOnly, false)));
 }
 
 /**
- * Deterministic, category-aware daily question pick: seeded by (userId, date)
- * so the same user sees the same question all day and different users see
- * varied questions that rotate across categories daily.
+ * Deterministic daily challenge: seeded by `date` only so every user sees the
+ * exact same high-impact question all day. Core categories only (practice-only
+ * questions are excluded from the daily pool).
  */
 async function assignDailyQuestion(db: DB, userId: number, date: string): Promise<QuestionRow> {
-  const all = await loadAllActive(db);
+  const all = await loadDailyPool(db);
   if (all.length === 0) throw AppError.notFound("No questions available yet");
 
   const categories = [...new Set(all.map((q) => q.category))];
-  const category = categories[seedFromInts(userId, dateSeed(date), 1) % categories.length]!;
+  const category = categories[seedFromInts(dateSeed(date), 1) % categories.length]!;
   const pool = all.filter((q) => q.category === category);
-  const question = pool[seedFromInts(userId, dateSeed(date), 2) % pool.length]!;
+  const question = pool[seedFromInts(dateSeed(date), 2) % pool.length]!;
 
   try {
     await db.insert(dailyAssignments).values({ userId, questionId: question.id, date });
@@ -61,7 +65,7 @@ export const questionService = {
     const [existing] = await db
       .select({ id: answers.id })
       .from(answers)
-      .where(and(eq(answers.userId, userId), eq(answers.date, date)));
+      .where(and(eq(answers.userId, userId), eq(answers.dailyKey, date)));
     if (existing) {
       return { question: null, alreadyAnswered: true, answerId: existing.id };
     }
@@ -101,6 +105,16 @@ export const questionService = {
       questions: page.map(toQuestion),
       nextCursor: hasMore ? page[page.length - 1]!.id : null,
     };
+  },
+
+  /** Random active question for practice mode, optionally filtered by category. */
+  async practice(db: DB, category?: string): Promise<Question> {
+    const conditions = [eq(questions.isActive, true)];
+    if (category) conditions.push(eq(questions.category, category as QuestionRow["category"]));
+
+    const rows = await db.select().from(questions).where(and(...conditions));
+    if (rows.length === 0) throw AppError.notFound("No questions found for this category");
+    return toQuestion(rows[Math.floor(Math.random() * rows.length)]!);
   },
 
   async getById(db: DB, id: number): Promise<Question> {

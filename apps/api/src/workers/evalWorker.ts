@@ -57,23 +57,25 @@ export function registerEvalWorker(): void {
         })
         .where(eq(answers.id, job.answerId));
 
-      const streak = await streakService.recordActivity(db, job.userId, dateStr());
+      // Practice answers (dailyKey = NULL) never affect the daily streak.
+      const isPractice = answer.dailyKey === null;
+      const streak = isPractice ? null : await streakService.recordActivity(db, job.userId, dateStr());
 
       await hub.publish(channel, {
         type: "done",
         score: result.score,
         feedback: result.feedback,
         modelAnswer: result.modelAnswer,
-        streak: { current: streak.current, longest: streak.longest },
+        streak: streak ? { current: streak.current, longest: streak.longest } : null,
       });
 
       const prefs = await notificationService.getPrefs(db, job.userId);
       if (prefs.evalNotifications) {
         await notificationService.enqueueForChannels(db, job.userId, "eval_completed", {
           score: result.score,
-          streak: streak.current,
-          title: "Your answer is evaluated",
-          body: `You scored ${result.score}/10. Current streak: ${streak.current} days.`,
+          streak: streak?.current ?? null,
+          title: isPractice ? "Practice answer evaluated" : "Your answer is evaluated",
+          body: `You scored ${result.score}/10.${streak ? ` Current streak: ${streak.current} days.` : ""}`,
         });
       }
     } catch (err) {

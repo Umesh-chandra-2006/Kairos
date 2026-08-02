@@ -128,3 +128,110 @@ describe("answers API", () => {
     expect(res.body.answers[0].question.id).toBe(questionId);
   });
 });
+
+describe("practice API", () => {
+  it("returns a random practice question", async () => {
+    const { accessToken } = await registerUser(uniqueEmail("pr_q"));
+    const res = await request(getApp())
+      .get("/api/questions/practice")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .expect(200);
+    expect(res.body.question).toHaveProperty("text");
+    expect(res.body.question).toHaveProperty("category");
+  });
+
+  it("filters practice questions by category", async () => {
+    const { accessToken } = await registerUser(uniqueEmail("pr_cat"));
+    const res = await request(getApp())
+      .get("/api/questions/practice?category=DSA")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .expect(200);
+    expect(res.body.question.category).toBe("DSA");
+  });
+
+  it("allows a practice answer even after the daily answer, without touching the streak", async () => {
+    const { accessToken } = await registerUser(uniqueEmail("pr_sub"));
+    const today = await request(getApp())
+      .get("/api/questions/today")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .expect(200);
+    const dailyQuestionId: number = today.body.question.id;
+
+    const daily = await request(getApp())
+      .post("/api/answers/submit")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ questionId: dailyQuestionId, answerText: "A sufficiently long daily answer for the evaluation flow." })
+      .expect(201);
+    await waitForStatus(daily.body.answerId, accessToken);
+
+    const before = await request(getApp())
+      .get("/api/streak")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .expect(200);
+    const streakBefore = before.body.streak.current as number;
+
+    const practice = await request(getApp())
+      .get("/api/questions/practice?category=DSA")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .expect(200);
+    const practiceQuestionId: number = practice.body.question.id;
+
+    const submit = await request(getApp())
+      .post("/api/answers/practice")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ questionId: practiceQuestionId, answerText: "A sufficiently long practice answer for the evaluation flow." })
+      .expect(201);
+    expect(submit.body.answerId).toBeTypeOf("number");
+
+    const status = await waitForStatus(submit.body.answerId, accessToken);
+    expect(["completed", "failed"]).toContain(status);
+
+    const detail = await request(getApp())
+      .get(`/api/answers/${submit.body.answerId}`)
+      .set("Authorization", `Bearer ${accessToken}`)
+      .expect(200);
+    expect(detail.body.answer.isPractice).toBe(true);
+
+    const after = await request(getApp())
+      .get("/api/streak")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .expect(200);
+    // Practice answers must never move the streak (even when the daily eval failed).
+    expect(after.body.streak.current).toBe(streakBefore);
+  });
+
+  it("does not mark the daily question as answered by a practice submission", async () => {
+    const { accessToken } = await registerUser(uniqueEmail("pr_daily"));
+    const practice = await request(getApp())
+      .get("/api/questions/practice")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .expect(200);
+
+    await request(getApp())
+      .post("/api/answers/practice")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .send({ questionId: practice.body.question.id, answerText: "A practice answer that is long enough to validate." })
+      .expect(201);
+
+    const today = await request(getApp())
+      .get("/api/questions/today")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .expect(200);
+    expect(today.body.alreadyAnswered).toBe(false);
+    expect(today.body.question).not.toBeNull();
+  });
+});
+
+describe("deterministic daily question", () => {
+  it("gives two users the same question on the same day", async () => {
+    const { accessToken: t1 } = await registerUser(uniqueEmail("det_a"));
+    const { accessToken: t2 } = await registerUser(uniqueEmail("det_b"));
+
+    const [r1, r2] = await Promise.all([
+      request(getApp()).get("/api/questions/today").set("Authorization", `Bearer ${t1}`).expect(200),
+      request(getApp()).get("/api/questions/today").set("Authorization", `Bearer ${t2}`).expect(200),
+    ]);
+
+    expect(r1.body.question.id).toBe(r2.body.question.id);
+  });
+});

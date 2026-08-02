@@ -60,7 +60,7 @@ pnpm --filter @kairos/api test        # API integration tests only
 pnpm --filter @kairos/api test -- -t "streak"   # single test
 pnpm db:generate      # regenerate Drizzle migrations after schema changes
 pnpm db:migrate       # apply migrations
-pnpm db:seed          # seed questions (300+ interview questions)
+pnpm db:seed          # seed questions (450+ curated across 19 categories)
 pnpm docker:up / pnpm docker:down
 ```
 
@@ -85,7 +85,14 @@ pnpm docker:up / pnpm docker:down
 - **Evaluation**: submitting an answer enqueues an eval job (Redis BullMQ, or an
   in-process fallback). The eval worker streams progress over SSE
   (`status` / `token` / `done` / `error` events) and persists the structured
-  evaluation.
+  evaluation. Practice answers stream the same way but never affect streaks.
+- **Daily challenge**: a deterministic, community-shared question each day —
+  every user gets the exact same question (seeded by date), picked from the
+  core technical categories.
+- **Practice mode**: 19 categories (core + full-stack, cloud, security, testing,
+  DevOps, mobile, ML, agile, product, HR…). Pick a topic and answer unlimited
+  random questions with full AI evaluation; practice answers don't count toward
+  the daily streak.
 - **Streaks**: daily streak with freeze unlocks; a missed day auto-consumes a
   freeze to keep the streak alive (one freeze/week, refilled on read).
 - **Notifications**: a minute-tick scheduler enqueues daily reminders

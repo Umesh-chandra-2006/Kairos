@@ -120,6 +120,9 @@ export const questions = mysqlTable(
     text: text("text").notNull(),
     rubricHints: text("rubricHints").notNull(),
     isActive: boolean("isActive").default(true).notNull(),
+    // Practice-only questions (non-core categories) are excluded from the daily
+    // challenge pool but remain reachable via practice mode.
+    practiceOnly: boolean("practiceOnly").default(false).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
@@ -133,7 +136,9 @@ export type Question = typeof questions.$inferSelect;
 export type InsertQuestion = typeof questions.$inferInsert;
 
 // ---------------------------------------------------------------------------
-// answers — one per user per day; AI evaluation status tracked on the row
+// answers — one daily answer per user per day (via nullable `dailyKey` unique),
+// plus unlimited practice answers (dailyKey = NULL). `date` is kept for display
+// and history grouping. Streaks count only daily answers.
 // ---------------------------------------------------------------------------
 export const answers = mysqlTable(
   "answers",
@@ -146,6 +151,7 @@ export const answers = mysqlTable(
       .notNull()
       .references(() => questions.id, { onDelete: "restrict" }),
     date: varchar("date", { length: 10 }).notNull(),
+    dailyKey: varchar("dailyKey", { length: 10 }),
     answerText: text("answerText").notNull(),
     score: int("score"),
     feedback: text("feedback"),
@@ -156,7 +162,9 @@ export const answers = mysqlTable(
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   (t) => [
-    uniqueIndex("answers_user_date_idx").on(t.userId, t.date),
+    // NULL dailyKey values (practice answers) never collide; daily answers are
+    // unique per user per day.
+    uniqueIndex("answers_user_dailykey_idx").on(t.userId, t.dailyKey),
     index("answers_user_created_idx").on(t.userId, t.createdAt),
     index("answers_question_idx").on(t.questionId),
   ],

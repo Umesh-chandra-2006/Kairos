@@ -27,7 +27,12 @@ export const todayQuestionResponseSchema = z.object({
   answerId: z.number().int().optional(),
 });
 
+export const practiceQuerySchema = z.object({
+  category: z.enum(CATEGORIES).optional(),
+});
+
 export type Question = z.infer<typeof questionSchema>;
 export type QuestionFilters = z.infer<typeof questionFiltersSchema>;
 export type QuestionListResponse = z.infer<typeof questionListResponseSchema>;
 export type TodayQuestionResponse = z.infer<typeof todayQuestionResponseSchema>;
+export type PracticeQuery = z.infer<typeof practiceQuerySchema>;

@@ -15,6 +15,7 @@ export const answerSchema = z.object({
   id: z.number().int(),
   questionId: z.number().int(),
   date: z.string(),
+  isPractice: z.boolean(),
   answerText: z.string(),
   score: z.number().int().min(1).max(10).nullable(),
   feedback: z.string().nullable(),

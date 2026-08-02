@@ -15,7 +15,7 @@ export type StreamEvent =
       score: number;
       feedback: string;
       modelAnswer: string;
-      streak: { current: number; longest: number };
+      streak: { current: number; longest: number } | null;
     }
   | { type: "error"; message: string };
 

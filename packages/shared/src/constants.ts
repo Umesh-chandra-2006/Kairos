@@ -6,6 +6,45 @@ export const CATEGORIES = [
   "OOP",
   "SystemDesign",
   "Behavioral",
+  "FullStack",
+  "Frontend",
+  "Backend",
+  "HR",
+  "Cloud",
+  "Security",
+  "Testing",
+  "DevOps",
+  "Mobile",
+  "MachineLearning",
+  "Agile",
+  "Product",
+] as const;
+
+/** Core categories that feed the daily challenge (technical + behavioral depth). */
+export const CORE_CATEGORIES = [
+  "DSA",
+  "OS",
+  "DBMS",
+  "Networks",
+  "OOP",
+  "SystemDesign",
+  "Behavioral",
+] as const;
+
+/** Additional categories available through practice mode. */
+export const PRACTICE_CATEGORIES = [
+  "FullStack",
+  "Frontend",
+  "Backend",
+  "HR",
+  "Cloud",
+  "Security",
+  "Testing",
+  "DevOps",
+  "Mobile",
+  "MachineLearning",
+  "Agile",
+  "Product",
 ] as const;
 export type Category = (typeof CATEGORIES)[number];
 
