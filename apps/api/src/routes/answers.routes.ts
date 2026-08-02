@@ -10,6 +10,7 @@ import { aiRateLimit } from "../middleware/rateLimit";
 import { validate } from "../middleware/validate";
 import { getRuntime } from "../queue";
 import { answerService } from "../services/answer.service";
+import { getWeeklySummary } from "../services/stats.service";
 
 export const answersRouter: Router = Router();
 
@@ -44,6 +45,14 @@ answersRouter.get(
     const db = getDb();
     const { cursor, limit } = req.query as unknown as { cursor?: number; limit: number };
     res.json(await answerService.history(db, req.userId!, cursor, limit));
+  }),
+);
+
+answersRouter.get(
+  "/weekly-summary",
+  asyncHandler(async (req, res) => {
+    const db = getDb();
+    res.json({ summary: await getWeeklySummary(db, req.userId!) });
   }),
 );
 

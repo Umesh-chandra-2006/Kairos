@@ -14,6 +14,7 @@ import {
 import webpush from "web-push";
 import { addDaysStr, dateStr, isMonday, lastMondayStr } from "../lib/dates";
 import { logger } from "../lib/logger";
+import { computeWeeklyStats } from "../services/stats.service";
 
 const MAX_ATTEMPTS = 5;
 
@@ -254,47 +255,6 @@ export async function enqueueDailyReminders(db: DB, now = new Date()): Promise<n
     }
   }
   return enqueued;
-}
-
-interface WeeklyStats {
-  count: number;
-  scoreSum: number;
-  scoreCount: number;
-  byCategory: Map<string, { sum: number; n: number }>;
-}
-
-function computeWeeklyStats(rows: Array<{ category: string; score: number | null }>): {
-  answered: number;
-  avgScore: number | null;
-  weakestCategory: string | null;
-} {
-  const byCategory = new Map<string, { sum: number; n: number }>();
-  let scoreSum = 0;
-  let scoreCount = 0;
-  for (const row of rows) {
-    if (row.score != null) {
-      scoreSum += row.score;
-      scoreCount += 1;
-      const acc = byCategory.get(row.category) ?? { sum: 0, n: 0 };
-      acc.sum += row.score;
-      acc.n += 1;
-      byCategory.set(row.category, acc);
-    }
-  }
-  let weakest: string | null = null;
-  let weakestAvg = Infinity;
-  for (const [category, acc] of byCategory) {
-    const avg = acc.sum / acc.n;
-    if (avg < weakestAvg) {
-      weakestAvg = avg;
-      weakest = category;
-    }
-  }
-  return {
-    answered: rows.length,
-    avgScore: scoreCount > 0 ? Math.round((scoreSum / scoreCount) * 10) / 10 : null,
-    weakestCategory: weakest,
-  };
 }
 
 /**

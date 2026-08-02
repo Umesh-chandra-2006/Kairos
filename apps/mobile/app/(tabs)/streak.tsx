@@ -8,8 +8,17 @@ import type { Streak } from "@kairos/shared";
 
 type StreakWithRank = Streak & { rank: number | null };
 
+interface WeeklySummary {
+  weekStart: string;
+  weekEnd: string;
+  answered: number;
+  avgScore: number | null;
+  weakestCategory: string | null;
+}
+
 export default function StreakScreen() {
   const [streak, setStreak] = useState<StreakWithRank | null>(null);
+  const [weekly, setWeekly] = useState<WeeklySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [refilling, setRefilling] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +36,12 @@ export default function StreakScreen() {
 
   useEffect(() => {
     load();
+    api
+      .weeklySummary()
+      .then(({ summary }) => setWeekly(summary))
+      .catch(() => {
+        /* non-critical */
+      });
   }, [load]);
 
   const refill = async () => {
@@ -70,11 +85,32 @@ export default function StreakScreen() {
       ) : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Button title="Refill freezes" onPress={refill} loading={refilling} variant="ghost" />
+
+      {weekly ? (
+        <View style={styles.weekCard}>
+          <Text style={styles.weekTitle}>Last week</Text>
+          {weekly.answered > 0 ? (
+            <>
+              <View style={styles.cards}>
+                <Stat label="Answered" value={weekly.answered} />
+                <Stat label="Avg score" value={weekly.avgScore ?? "–"} />
+              </View>
+              <Text style={styles.weekNote}>
+                {weekly.weakestCategory
+                  ? `Weakest area: ${weekly.weakestCategory}`
+                  : "No scored answers yet — the evaluation AI needs a key to score."}
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.weekNote}>You didn't answer any daily questions last week. A fresh week starts today.</Text>
+          )}
+        </View>
+      ) : null}
     </Screen>
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ label, value }: { label: string; value: number | string }) {
   return (
     <View style={styles.stat}>
       <Text style={styles.statValue}>{value}</Text>
@@ -98,4 +134,14 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 12, color: colors.muted, marginTop: 4, textAlign: "center" },
   rank: { fontSize: 15, color: colors.text, marginBottom: 12 },
   error: { color: colors.danger, marginBottom: 12 },
+  weekCard: {
+    marginTop: 24,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 16,
+  },
+  weekTitle: { fontSize: 15, fontWeight: "600", color: colors.text, marginBottom: 12 },
+  weekNote: { fontSize: 13, color: colors.muted, marginTop: 12, lineHeight: 18 },
 });

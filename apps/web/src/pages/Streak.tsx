@@ -1,8 +1,17 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 
+interface WeeklySummary {
+  weekStart: string;
+  weekEnd: string;
+  answered: number;
+  avgScore: number | null;
+  weakestCategory: string | null;
+}
+
 export function Streak() {
   const [streak, setStreak] = useState<{ current: number; longest: number; freezesRemaining: number } | null>(null);
+  const [weekly, setWeekly] = useState<WeeklySummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -11,6 +20,12 @@ export function Streak() {
       .streak()
       .then(({ streak: s }) => setStreak(s))
       .catch((err) => setError(err instanceof Error ? err.message : "Could not load streak"));
+    api
+      .weeklySummary()
+      .then(({ summary }) => setWeekly(summary))
+      .catch(() => {
+        /* non-critical */
+      });
   }, []);
 
   async function refill() {
@@ -56,6 +71,36 @@ export function Streak() {
         </button>
         {error && <p className="banner banner-error">{error}</p>}
       </div>
+      {weekly ? (
+        <div className="card">
+          <h3 className="card-title">Last week</h3>
+          {weekly.answered > 0 ? (
+            <>
+              <div className="stats-row">
+                <div className="stat">
+                  <span className="stat-value">{weekly.answered}</span>
+                  <span className="stat-label">Questions answered</span>
+                </div>
+                <div className="stat">
+                  <span className="stat-value">{weekly.avgScore ?? "–"}</span>
+                  <span className="stat-label">Average score /10</span>
+                </div>
+                <div className="stat">
+                  <span className="stat-value">{weekly.weakestCategory ?? "–"}</span>
+                  <span className="stat-label">Focus area</span>
+                </div>
+              </div>
+              <p className="muted">
+                {weekly.weakestCategory
+                  ? `Your weakest area was ${weekly.weakestCategory} — try a practice round there.`
+                  : "No scored answers yet — the evaluation AI needs a key to score."}
+              </p>
+            </>
+          ) : (
+            <p className="muted">You didn't answer any daily questions last week. A fresh week starts today.</p>
+          )}
+        </div>
+      ) : null}
       <div className="card">
         <h3 className="card-title">How it works</h3>
         <ul className="how-list">

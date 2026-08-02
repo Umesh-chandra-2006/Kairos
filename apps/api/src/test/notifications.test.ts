@@ -253,4 +253,34 @@ describe("weekly summary", () => {
     expect(row!.status).toBe("pending"); // scheduled for retry
     expect(row!.attempts).toBe(1);
   });
+
+  it("serves the weekly summary via the API", async () => {
+    const { accessToken, user } = await registerUser(uniqueEmail("ws_api"));
+    const { a, b } = await distinctQuestions();
+    const weekEnd = lastMondayStr(mondayNow());
+    await insertDailyAnswer(user.id, a.id, addDaysStr(weekEnd, -5), 3);
+    await insertDailyAnswer(user.id, b.id, addDaysStr(weekEnd, -2), 8);
+
+    const res = await request(getApp())
+      .get("/api/answers/weekly-summary")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .expect(200);
+
+    expect(res.body.summary).toMatchObject({
+      answered: 2,
+      avgScore: 5.5,
+      weakestCategory: a.category,
+      weekStart: addDaysStr(weekEnd, -7),
+      weekEnd,
+    });
+  });
+
+  it("returns an empty summary for a user with no answers", async () => {
+    const { accessToken } = await registerUser(uniqueEmail("ws_api_empty"));
+    const res = await request(getApp())
+      .get("/api/answers/weekly-summary")
+      .set("Authorization", `Bearer ${accessToken}`)
+      .expect(200);
+    expect(res.body.summary).toMatchObject({ answered: 0, avgScore: null, weakestCategory: null });
+  });
 });

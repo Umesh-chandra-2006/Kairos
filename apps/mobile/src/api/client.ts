@@ -192,6 +192,10 @@ export const api = {
     qs.set("limit", String(limit));
     return api.get<HistoryResponse>(`/api/answers?${qs.toString()}`);
   },
+  weeklySummary: () =>
+    api.get<{ summary: { weekStart: string; weekEnd: string; answered: number; avgScore: number | null; weakestCategory: string | null } }>(
+      "/api/answers/weekly-summary",
+    ),
   answerStreamUrl: (answerId: number) =>
     `${API_URL}/api/answers/${answerId}/stream?token=${encodeURIComponent(accessToken ?? "")}`,
 
