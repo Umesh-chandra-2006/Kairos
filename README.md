@@ -98,6 +98,8 @@ pnpm docker:up / pnpm docker:down
 - **Notifications**: a minute-tick scheduler enqueues daily reminders
   (matched to each user's local `reminderTime`) into a reliable outbox table and
   drains it to Expo push / web push / email with retries and a dead-letter cap.
+  Every Monday it also sends a weekly re-engagement email: questions answered,
+  average score, and weakest category for the previous week.
 - **Leaderboard**: aggregated from daily answer scores with the caller's rank.
 
 ## Push notifications

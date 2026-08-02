@@ -1,0 +1,1 @@
+ALTER TABLE `notification_outbox` MODIFY COLUMN `type` enum('eval_completed','streak_milestone','streak_reminder','weekly_summary') NOT NULL;

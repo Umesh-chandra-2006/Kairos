@@ -1,9 +1,11 @@
 ﻿import { afterEach, describe, expect, it } from "vitest";
 import request from "supertest";
+import { eq } from "drizzle-orm";
 import { getDb } from "@kairos/db";
-import { answers, notificationOutbox, notificationPrefs, pushSubscriptions } from "@kairos/db/schema";
+import { answers, notificationOutbox, notificationPrefs, pushSubscriptions, questions } from "@kairos/db/schema";
 import { getApp, registerUser, uniqueEmail } from "./helpers";
-import { drainOutbox, enqueueDailyReminders } from "../workers/notificationWorker";
+import { drainOutbox, enqueueDailyReminders, enqueueWeeklySummaries } from "../workers/notificationWorker";
+import { addDaysStr, lastMondayStr } from "../lib/dates";
 
 afterEach(async () => {
   const db = getDb();
@@ -140,5 +142,115 @@ describe("notification scheduler", () => {
       channel: "web",
       token: "https://example.com/push-list",
     });
+  });
+});
+
+/** A deterministic Monday 09:30 UTC (rolls back to the current week's Monday). */
+function mondayNow(): Date {
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  d.setUTCHours(9, 30, 0, 0);
+  return d;
+}
+
+/** Two questions from distinct categories in the seeded test bank. */
+async function distinctQuestions() {
+  const db = getDb();
+  const all = await db.select({ id: questions.id, category: questions.category }).from(questions);
+  const a = all[0]!;
+  const b = all.find((q) => q.category !== a.category)!;
+  return { a, b };
+}
+
+async function insertDailyAnswer(
+  userId: number,
+  questionId: number,
+  date: string,
+  score: number,
+  answerText = "A weekly summary test answer that is long enough.",
+) {
+  await getDb().insert(answers).values({
+    userId,
+    questionId,
+    date,
+    dailyKey: date,
+    answerText,
+    score,
+    status: "completed",
+  });
+}
+
+describe("weekly summary", () => {
+  it("does not run outside Monday", async () => {
+    const { user } = await registerUser(uniqueEmail("ws_wed"));
+    const { a } = await distinctQuestions();
+    await insertDailyAnswer(user.id, a.id, addDaysStr(lastMondayStr(mondayNow()), -2), 7);
+    const wednesday = new Date(mondayNow().getTime() + 2 * 86_400_000);
+    expect(await enqueueWeeklySummaries(getDb(), wednesday)).toBe(0);
+  });
+
+  it("enqueues a summary with answered count, average score, and weakest category", async () => {
+    const { user } = await registerUser(uniqueEmail("ws_agg"));
+    const { a, b } = await distinctQuestions();
+    const weekEnd = lastMondayStr(mondayNow());
+    const dayA = addDaysStr(weekEnd, -5); // category A, one answer score 3
+    const dayB1 = addDaysStr(weekEnd, -2); // category B, two answers score 8
+    const dayB2 = addDaysStr(weekEnd, -1);
+
+    await insertDailyAnswer(user.id, a.id, dayA, 3);
+    await insertDailyAnswer(user.id, b.id, dayB1, 8);
+    await insertDailyAnswer(user.id, b.id, dayB2, 8);
+
+    const db = getDb();
+    expect(await enqueueWeeklySummaries(db, mondayNow())).toBe(1);
+    expect(await enqueueWeeklySummaries(db, mondayNow())).toBe(0); // idempotent
+
+    const [row] = await db.select().from(notificationOutbox).where(eq(notificationOutbox.type, "weekly_summary"));
+    expect(row).toBeDefined();
+    expect(row!.channel).toBe("email");
+    const payload = row!.payload as { weekStart: string; stats: { answered: number; avgScore: number; weakestCategory: string } };
+    expect(payload.weekStart).toBe(addDaysStr(weekEnd, -7));
+    expect(payload.stats.answered).toBe(3);
+    expect(payload.stats.avgScore).toBe(6.3);
+    expect(payload.stats.weakestCategory).toBe(a.category);
+  });
+
+  it("ignores practice answers (null dailyKey) and answers outside the window", async () => {
+    const { user } = await registerUser(uniqueEmail("ws_prac"));
+    const { a, b } = await distinctQuestions();
+    const weekEnd = lastMondayStr(mondayNow());
+
+    await getDb().insert(answers).values({
+      userId: user.id,
+      questionId: a.id,
+      date: addDaysStr(weekEnd, -3),
+      dailyKey: null, // practice
+      answerText: "A practice answer that is long enough.",
+      score: 9,
+      status: "completed",
+    });
+    await insertDailyAnswer(user.id, b.id, weekEnd, 7); // this Monday -> next week
+
+    expect(await enqueueWeeklySummaries(getDb(), mondayNow())).toBe(0);
+  });
+
+  it("skips users with no answers last week", async () => {
+    const { user } = await registerUser(uniqueEmail("ws_none"));
+    void user;
+    expect(await enqueueWeeklySummaries(getDb(), mondayNow())).toBe(0);
+  });
+
+  it("drains a summary email entry (retries without an email provider)", async () => {
+    const { user } = await registerUser(uniqueEmail("ws_drain"));
+    const { a } = await distinctQuestions();
+    await insertDailyAnswer(user.id, a.id, addDaysStr(lastMondayStr(mondayNow()), -3), 6);
+
+    const db = getDb();
+    expect(await enqueueWeeklySummaries(db, mondayNow())).toBe(1);
+    expect(await drainOutbox(db)).toBe(0); // email dry-run fails -> nothing sent
+
+    const [row] = await db.select().from(notificationOutbox).where(eq(notificationOutbox.type, "weekly_summary"));
+    expect(row!.status).toBe("pending"); // scheduled for retry
+    expect(row!.attempts).toBe(1);
   });
 });

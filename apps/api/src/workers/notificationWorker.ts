@@ -1,17 +1,18 @@
-import { and, eq, gte, inArray } from "drizzle-orm";
+import { and, eq, gte, inArray, isNotNull, lt } from "drizzle-orm";
 import { getEnv } from "@kairos/config";
-import { sendEmail } from "@kairos/email";
+import { sendEmail, sendWeeklySummaryEmail } from "@kairos/email";
 import { getDb, type DB } from "@kairos/db";
 import {
   answers,
   notificationOutbox,
   notificationPrefs,
   pushSubscriptions,
+  questions,
   users,
   type NotificationOutbox,
 } from "@kairos/db/schema";
 import webpush from "web-push";
-import { dateStr } from "../lib/dates";
+import { addDaysStr, dateStr, isMonday, lastMondayStr } from "../lib/dates";
 import { logger } from "../lib/logger";
 
 const MAX_ATTEMPTS = 5;
@@ -79,12 +80,17 @@ async function sendExpoPush(db: DB, entry: NotificationOutbox, payload: Record<s
 async function sendEmailEntry(db: DB, entry: NotificationOutbox, payload: Record<string, unknown>): Promise<void> {
   const [user] = await db.select().from(users).where(eq(users.id, entry.userId));
   if (!user) return;
-  const ok = await sendEmail({
-    to: user.email,
-    subject: String(payload.title ?? "Kairos"),
-    html: `<p>${String(payload.body ?? "")}</p>`,
-    text: String(payload.body ?? ""),
-  });
+  let ok: boolean;
+  if (entry.type === "weekly_summary") {
+    ok = await sendWeeklySummaryEmail(user.email, payload);
+  } else {
+    ok = await sendEmail({
+      to: user.email,
+      subject: String(payload.title ?? "Kairos"),
+      html: `<p>${String(payload.body ?? "")}</p>`,
+      text: String(payload.body ?? ""),
+    });
+  }
   if (!ok) throw new Error("Email send failed");
 }
 
@@ -246,6 +252,114 @@ export async function enqueueDailyReminders(db: DB, now = new Date()): Promise<n
       });
       enqueued += 1;
     }
+  }
+  return enqueued;
+}
+
+interface WeeklyStats {
+  count: number;
+  scoreSum: number;
+  scoreCount: number;
+  byCategory: Map<string, { sum: number; n: number }>;
+}
+
+function computeWeeklyStats(rows: Array<{ category: string; score: number | null }>): {
+  answered: number;
+  avgScore: number | null;
+  weakestCategory: string | null;
+} {
+  const byCategory = new Map<string, { sum: number; n: number }>();
+  let scoreSum = 0;
+  let scoreCount = 0;
+  for (const row of rows) {
+    if (row.score != null) {
+      scoreSum += row.score;
+      scoreCount += 1;
+      const acc = byCategory.get(row.category) ?? { sum: 0, n: 0 };
+      acc.sum += row.score;
+      acc.n += 1;
+      byCategory.set(row.category, acc);
+    }
+  }
+  let weakest: string | null = null;
+  let weakestAvg = Infinity;
+  for (const [category, acc] of byCategory) {
+    const avg = acc.sum / acc.n;
+    if (avg < weakestAvg) {
+      weakestAvg = avg;
+      weakest = category;
+    }
+  }
+  return {
+    answered: rows.length,
+    avgScore: scoreCount > 0 ? Math.round((scoreSum / scoreCount) * 10) / 10 : null,
+    weakestCategory: weakest,
+  };
+}
+
+/**
+ * Enqueues a weekly summary email for users who answered at least one daily
+ * question during the previous Mon–Sun week. Runs only on Monday (UTC) and is
+ * idempotent per user per week via the outbox. Returns the number enqueued.
+ */
+export async function enqueueWeeklySummaries(db: DB, now = new Date()): Promise<number> {
+  if (!isMonday(now)) return 0;
+  const weekEnd = lastMondayStr(now); // this Monday (exclusive)
+  const weekStart = addDaysStr(weekEnd, -7); // last Monday (inclusive)
+
+  const rows = await db
+    .select({
+      userId: answers.userId,
+      category: questions.category,
+      score: answers.score,
+    })
+    .from(answers)
+    .innerJoin(questions, eq(answers.questionId, questions.id))
+    .where(
+      and(
+        gte(answers.date, weekStart),
+        lt(answers.date, weekEnd),
+        isNotNull(answers.dailyKey),
+      ),
+    );
+
+  if (rows.length === 0) return 0;
+
+  const byUser = new Map<number, Array<{ category: string; score: number | null }>>();
+  for (const row of rows) {
+    const list = byUser.get(row.userId) ?? [];
+    list.push({ category: row.category, score: row.score });
+    byUser.set(row.userId, list);
+  }
+
+  const existing = await db
+    .select({ userId: notificationOutbox.userId })
+    .from(notificationOutbox)
+    .where(
+      and(
+        eq(notificationOutbox.type, "weekly_summary"),
+        eq(notificationOutbox.channel, "email"),
+        gte(notificationOutbox.createdAt, new Date(`${weekStart}T00:00:00Z`)),
+      ),
+    );
+  const already = new Set(existing.map((r) => r.userId));
+
+  let enqueued = 0;
+  for (const [userId, answerRows] of byUser) {
+    if (already.has(userId)) continue;
+    const stats = computeWeeklyStats(answerRows);
+    await db.insert(notificationOutbox).values({
+      userId,
+      type: "weekly_summary",
+      channel: "email",
+      payload: {
+        title: "Your Kairos weekly summary",
+        weekStart,
+        weekEnd,
+        stats,
+      },
+    });
+    enqueued += 1;
   }
   return enqueued;
 }

@@ -72,3 +72,57 @@ export function sendPasswordResetEmail(to: string, token: string): Promise<boole
     text: `Reset your password: ${link}`,
   });
 }
+
+export interface WeeklySummaryData {
+  weekStart?: string;
+  weekEnd?: string;
+  stats?: {
+    answered?: number;
+    avgScore?: number | null;
+    weakestCategory?: string | null;
+  };
+}
+
+export function sendWeeklySummaryEmail(to: string, data: WeeklySummaryData): Promise<boolean> {
+  const stats = data.stats ?? {};
+  const answered = stats.answered ?? 0;
+  const avgScore = stats.avgScore ?? null;
+  const weakest = stats.weakestCategory ?? null;
+
+  const rows: Array<[string, string]> = [["Questions answered", String(answered)]];
+  if (avgScore != null) rows.push(["Average score", `${avgScore}/10`]);
+  if (weakest) rows.push(["Focus area", weakest]);
+
+  const table = rows.length
+    ? `<table style="width:100%;border-collapse:collapse;margin:16px 0;">${rows
+        .map(
+          ([k, v]) =>
+            `<tr><td style="padding:8px 0;color:#71717a;">${k}</td><td style="padding:8px 0;text-align:right;font-weight:600;color:#18181b;">${v}</td></tr>`,
+        )
+        .join("")}</table>`
+    : "";
+
+  const body =
+    answered === 0
+      ? "You didn't answer any daily questions this week. A new week is the perfect time to pick the streak back up."
+      : "Here's how your interview prep went this week.";
+
+  const html = `<!doctype html><html><body style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
+    <h2 style="color:#18181b;">Kairos — Interview Prep</h2>
+    <p style="color:#3f3f46;line-height:1.6;">${body}</p>
+    ${table}
+    <p><a href="${getEnv().APP_URL}" style="display:inline-block;background:#18181b;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;">Answer today's question</a></p>
+    <p style="color:#a1a1aa;font-size:12px;">Keep the streak going — one question a day compounds fast.</p>
+  </body></html>`;
+
+  const text = [
+    `This week: ${answered} question(s) answered.`,
+    avgScore != null ? `Average score: ${avgScore}/10.` : "",
+    weakest ? `Focus area: ${weakest}.` : "",
+    `Answer today's question: ${getEnv().APP_URL}`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return sendEmail({ to, subject: "Your Kairos weekly summary", html, text });
+}

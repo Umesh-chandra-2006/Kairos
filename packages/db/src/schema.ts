@@ -278,6 +278,7 @@ export const NOTIFICATION_TYPE_ENUM = [
   "eval_completed",
   "streak_milestone",
   "streak_reminder",
+  "weekly_summary",
 ] as const;
 export const NOTIFICATION_CHANNEL_ENUM = ["web_push", "expo_push", "email"] as const;
 export const NOTIFICATION_STATUS_ENUM = ["pending", "sent", "failed"] as const;
