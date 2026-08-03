@@ -1,8 +1,7 @@
-import type { ReactNode } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
-export function Layout({ children }: { children?: ReactNode }) {
+export function Layout() {
   const { user, logout } = useAuth();
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -41,7 +40,9 @@ export function Layout({ children }: { children?: ReactNode }) {
           </button>
         </div>
       </header>
-      <main className="content">{children}</main>
+      <main className="content">
+        <Outlet />
+      </main>
     </div>
   );
 }
