@@ -5,3 +5,4 @@ export * from "./schemas/answers";
 export * from "./schemas/streak";
 export * from "./schemas/leaderboard";
 export * from "./schemas/notifications";
+export * from "./validators";

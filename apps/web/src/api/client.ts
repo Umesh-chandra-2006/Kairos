@@ -14,6 +14,7 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    public details?: { path: (string | number)[]; message: string }[],
   ) {
     super(message);
     this.name = "ApiError";
@@ -65,6 +66,9 @@ interface RequestOptions {
   body?: unknown;
 }
 
+/** Auth endpoints that must never trigger a token refresh (would loop or mask the real error). */
+const NO_REFRESH_PATHS = ["/api/auth/refresh", "/api/auth/login", "/api/auth/register", "/api/auth/logout"];
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {};
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
@@ -77,7 +81,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   });
 
-  if (res.status === 401 && !path.startsWith("/api/auth/")) {
+  if (res.status === 401 && !NO_REFRESH_PATHS.some((p) => path.startsWith(p))) {
     const fresh = await refreshAccessToken();
     if (fresh) {
       headers["Authorization"] = `Bearer ${fresh}`;
@@ -92,13 +96,20 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   if (!res.ok) {
     let message = `Request failed (${res.status})`;
+    let details: ApiError["details"];
     try {
-      const body = (await res.json()) as { error?: { message?: string } };
+      const body = (await res.json()) as {
+        error?: {
+          message?: string;
+          details?: { path?: (string | number)[]; message?: string }[];
+        };
+      };
       if (body.error?.message) message = body.error.message;
+      details = body.error?.details?.map((d) => ({ path: d.path ?? [], message: d.message ?? "" }));
     } catch {
       /* keep default message */
     }
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, message, details);
   }
 
   if (res.status === 204) return undefined as T;

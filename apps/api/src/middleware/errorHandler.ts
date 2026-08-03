@@ -9,11 +9,38 @@ export function notFoundHandler(_req: Request, res: Response) {
   });
 }
 
+interface HttpErrorLike {
+  status?: number;
+  statusCode?: number;
+  expose?: boolean;
+  type?: string;
+}
+
+/** Express-level errors (body-parser, etc.) carry status/expose; they must map to
+ * real status codes (malformed JSON -> 400, oversized body -> 413) instead of 500. */
+function isHttpError(err: unknown): err is HttpErrorLike {
+  if (!err || typeof err !== "object") return false;
+  const status = (err as HttpErrorLike).status ?? (err as HttpErrorLike).statusCode;
+  return (err as HttpErrorLike).expose === true && typeof status === "number";
+}
+
 export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
   if (err instanceof AppError) {
     res.status(err.status).json({
       error: { code: err.code, message: err.message, ...(err.details !== undefined ? { details: err.details } : {}) },
     });
+    return;
+  }
+
+  if (isHttpError(err)) {
+    const status = (err.status ?? err.statusCode)!;
+    const message =
+      err.type === "entity.parse.failed"
+        ? "Malformed JSON in request body"
+        : err.type === "entity.too.large"
+          ? "Request body is too large"
+          : ERROR_MESSAGES[ERROR_CODES.VALIDATION];
+    res.status(status).json({ error: { code: ERROR_CODES.VALIDATION, message } });
     return;
   }
 

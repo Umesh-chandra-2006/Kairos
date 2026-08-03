@@ -17,11 +17,12 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
   );
 }
 
-export function Field({ label, children }: { label: string; children: ReactNode }) {
+export function Field({ label, error, children }: { label: string; error?: string; children: ReactNode }) {
   return (
     <label className="field">
       <span className="field-label">{label}</span>
       {children}
+      {error ? <span className="field-error">{error}</span> : null}
     </label>
   );
 }

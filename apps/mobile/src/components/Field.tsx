@@ -5,9 +5,10 @@ import { colors, radius } from "../theme";
 interface FieldProps extends TextInputProps {
   label: string;
   error?: string;
+  helper?: string;
 }
 
-export function Field({ label, error, style, ...props }: FieldProps) {
+export function Field({ label, error, helper, style, ...props }: FieldProps) {
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>{label}</Text>
@@ -16,6 +17,7 @@ export function Field({ label, error, style, ...props }: FieldProps) {
         placeholderTextColor={colors.muted}
         {...props}
       />
+      {helper && !error ? <Text style={styles.helper}>{helper}</Text> : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
     </View>
   );
@@ -48,5 +50,10 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 13,
     color: colors.danger,
+  },
+  helper: {
+    marginTop: 4,
+    fontSize: 12,
+    color: colors.muted,
   },
 });

@@ -25,11 +25,28 @@ describe("auth API", () => {
       .expect(409);
   });
 
-  it("rejects a weak password", async () => {
-    await request(getApp())
+  it("rejects a weak password with field-level details", async () => {
+    const res = await request(getApp())
       .post("/api/auth/register")
       .send({ name: "Bob", email: uniqueEmail(), password: "short", device: "mobile" })
       .expect(400);
+
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+    expect(res.body.error.details).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: ["password"], message: expect.any(String) }),
+      ]),
+    );
+  });
+
+  it("returns 400 (not 500) for a malformed JSON body", async () => {
+    const res = await request(getApp())
+      .post("/api/auth/register")
+      .set("Content-Type", "application/json")
+      .send('{"name": broken')
+      .expect(400);
+
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
   });
 
   it("logs in with correct credentials", async () => {
