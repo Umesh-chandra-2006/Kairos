@@ -90,21 +90,30 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
 
-  let res = await fetch(`${API_URL}${path}`, {
-    method: options.method ?? "GET",
-    headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      method: options.method ?? "GET",
+      headers,
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    });
+  } catch {
+    throw new ApiError(0, "Could not reach the server. Check your connection and try again.");
+  }
 
   if (res.status === 401 && !NO_REFRESH_PATHS.some((p) => path.startsWith(p))) {
     const fresh = await refreshAccessToken();
     if (fresh) {
       headers["Authorization"] = `Bearer ${fresh}`;
-      res = await fetch(`${API_URL}${path}`, {
-        method: options.method ?? "GET",
-        headers,
-        body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
-      });
+      try {
+        res = await fetch(`${API_URL}${path}`, {
+          method: options.method ?? "GET",
+          headers,
+          body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+        });
+      } catch {
+        throw new ApiError(0, "Could not reach the server. Check your connection and try again.");
+      }
     }
   }
 
