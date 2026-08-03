@@ -48,12 +48,14 @@ export const streakService = {
 
   /**
    * Advance the streak for an activity on `date`. Returns the updated streak.
-   * Consecutive days increment; a gap either consumes a freeze to keep the
-   * streak alive (one freeze per week) or resets the streak to 1.
+   * Consecutive days increment; a gap of exactly one missed day consumes a
+   * freeze to keep the streak alive (one freeze per week); any longer gap
+   * resets the streak to 1.
    */
   async recordActivity(db: DB, userId: number, date: string): Promise<StreakResult> {
     const row = await getStreak(db, userId);
     const yesterday = addDaysStr(date, -1);
+    const dayBeforeYesterday = addDaysStr(date, -2);
 
     let current = 1;
     let freezesRemaining = row.freezesRemaining;
@@ -61,8 +63,8 @@ export const streakService = {
       current = row.current; // already counted today
     } else if (row.lastActiveDate === yesterday) {
       current = row.current + 1;
-    } else if (row.lastActiveDate !== null && freezesRemaining > 0) {
-      // Missed a day but a freeze protects the streak
+    } else if (row.lastActiveDate === dayBeforeYesterday && freezesRemaining > 0) {
+      // Missed exactly one day; a freeze protects the streak
       current = row.current + 1;
       freezesRemaining -= 1;
     }

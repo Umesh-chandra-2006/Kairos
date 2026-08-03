@@ -45,6 +45,22 @@ describe("streak API", () => {
     expect(day4.current).toBe(1);
   });
 
+  it("does not consume a freeze for a gap longer than one missed day", async () => {
+    const { user } = await registerUser(uniqueEmail("st_gap"));
+    const db = getDb();
+
+    const day1 = await streakService.recordActivity(db, user.id, "2026-07-01");
+    expect(day1.current).toBe(1);
+    expect(day1.freezesRemaining).toBe(1);
+
+    const day2 = await streakService.recordActivity(db, user.id, "2026-07-02");
+    expect(day2.current).toBe(2);
+
+    const later = await streakService.recordActivity(db, user.id, "2026-07-05"); // missed 07-03 and 07-04
+    expect(later.current).toBe(1); // streak reset, freeze NOT consumed
+    expect(later.freezesRemaining).toBe(1);
+  });
+
   it("requires auth", async () => {
     await request(getApp()).get("/api/streak").expect(401);
   });

@@ -67,7 +67,12 @@ pnpm docker:up / pnpm docker:down
 ## Testing notes
 
 - API integration tests spin up a disposable `kairos_test` database and seed
-  their own questions; they need Docker MySQL/Redis running.
+  their own questions; they need Docker MySQL/Redis running. Start it with
+  `pnpm docker:up` — MySQL must be reachable on host port `3307` and Redis on
+  `6380` (as mapped in `docker-compose.yml`) before running `pnpm test`.
+- `pnpm test` runs every workspace package. `@kairos/shared` and `@kairos/config`
+  currently ship no unit tests (their local `vitest.config.ts` just keeps Vitest
+  from walking up into an unrelated `vite.config.ts` on the parent drive).
 - Tests force the **in-process** queue runtime (no Redis dependency) via
   `apps/api/src/test/setup.ts`.
 - Without `OPENROUTER_API_KEY`, evaluation degrades gracefully: answers move to

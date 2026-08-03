@@ -14,6 +14,83 @@ import { getWeeklySummary } from "../services/stats.service";
 
 export const answersRouter: Router = Router();
 
+/**
+ * Server-Sent Events stream for live evaluation progress. This MUST be
+ * registered before the router-wide `requireAuth`: EventSource cannot set an
+ * Authorization header, so auth is done via `?token=` (a normal short-lived
+ * access JWT) validated inside this handler.
+ */
+answersRouter.get(
+  "/:id/stream",
+  asyncHandler(async (req, res) => {
+    const token = req.query.token;
+    if (typeof token !== "string" || !token) throw AppError.unauthorized();
+    const payload = await verifyAccessToken(token);
+    const userId = Number(payload.sub);
+
+    const db = getDb();
+    const [answer] = await db
+      .select()
+      .from(answers)
+      .where(and(eq(answers.id, Number(req.params.id)), eq(answers.userId, userId)));
+    if (!answer) throw AppError.notFound("Answer not found");
+
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    const send = (event: unknown) => {
+      try {
+        res.write(`data: ${JSON.stringify(event)}\n\n`);
+      } catch {
+        /* socket already closed */
+      }
+    };
+
+    if (answer.status === "completed") {
+      send({
+        type: "done",
+        score: answer.score,
+        feedback: answer.feedback,
+        modelAnswer: answer.modelAnswer,
+        streak: null,
+      });
+      res.end();
+      return;
+    }
+    if (answer.status === "failed") {
+      send({ type: "error", message: answer.errorMessage ?? "Evaluation failed" });
+      res.end();
+      return;
+    }
+
+    const channel = `eval:${userId}:${answer.id}`;
+    const hub = getRuntime().hub;
+    let closed = false;
+    let heartbeat: ReturnType<typeof setInterval> | null = null;
+    let unsubscribe: (() => void) | null = null;
+
+    const cleanup = () => {
+      if (closed) return;
+      closed = true;
+      if (heartbeat) clearInterval(heartbeat);
+      unsubscribe?.();
+      res.end();
+    };
+
+    unsubscribe = hub.subscribe(channel, (event) => {
+      send(event);
+      if (event.type === "done" || event.type === "error") cleanup();
+    });
+    send({ type: "status", status: answer.status });
+    heartbeat = setInterval(() => send(": ping\n\n"), 15_000);
+    req.on("close", cleanup);
+  }),
+);
+
 answersRouter.use(requireAuth);
 
 answersRouter.post(
@@ -61,66 +138,5 @@ answersRouter.get(
   asyncHandler(async (req, res) => {
     const db = getDb();
     res.json({ answer: await answerService.getById(db, req.userId!, Number(req.params.id)) });
-  }),
-);
-
-/**
- * Server-Sent Events stream for live evaluation progress. Auth via ?token=
- * (EventSource cannot set Authorization headers); the token is a normal short
- * access JWT.
- */
-answersRouter.get(
-  "/:id/stream",
-  asyncHandler(async (req, res) => {
-    const token = req.query.token;
-    if (typeof token !== "string" || !token) throw AppError.unauthorized();
-    const payload = await verifyAccessToken(token);
-    const userId = Number(payload.sub);
-
-    const db = getDb();
-    const [answer] = await db
-      .select()
-      .from(answers)
-      .where(and(eq(answers.id, Number(req.params.id)), eq(answers.userId, userId)));
-    if (!answer) throw AppError.notFound("Answer not found");
-
-    res.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no",
-    });
-
-    const send = (event: unknown) => {
-      res.write(`data: ${JSON.stringify(event)}\n\n`);
-    };
-
-    if (answer.status === "completed") {
-      send({
-        type: "done",
-        score: answer.score,
-        feedback: answer.feedback,
-        modelAnswer: answer.modelAnswer,
-        streak: null,
-      });
-      res.end();
-      return;
-    }
-    if (answer.status === "failed") {
-      send({ type: "error", message: answer.errorMessage ?? "Evaluation failed" });
-      res.end();
-      return;
-    }
-
-    const channel = `eval:${userId}:${answer.id}`;
-    const hub = getRuntime().hub;
-    const unsubscribe = hub.subscribe(channel, (event) => send(event));
-    send({ type: "status", status: answer.status });
-
-    const heartbeat = setInterval(() => res.write(": ping\n\n"), 15_000);
-    req.on("close", () => {
-      clearInterval(heartbeat);
-      unsubscribe();
-    });
   }),
 );

@@ -29,38 +29,50 @@ export function History() {
 
   return (
     <div className="stack">
-      <div className="card">
-        <h2 className="card-title">Answer history</h2>
-        {error && <p className="banner banner-error">{error}</p>}
-        {answers.length === 0 && !error && <p className="muted">No answers yet. Answer today's question to get started.</p>}
-        <div className="history-list">
-          {answers.map((a) => (
-            <div key={a.id} className="history-item">
-              <div>
+      <div>
+        <h1 className="card-title">Answer history</h1>
+        <p className="muted">Tap an answer to see your score, feedback, and the model answer.</p>
+      </div>
+      {error && <p className="banner banner-error">{error}</p>}
+      {answers.length === 0 && !error && (
+        <div className="card empty-state">
+          <span className="empty-icon">✍️</span>
+          <p className="empty-title">No answers yet</p>
+          <p className="muted">Answer today's question to start building your track record.</p>
+          <Link className="btn btn-primary" to="/">
+            Answer today's question
+          </Link>
+        </div>
+      )}
+      <div className="history-list">
+        {answers.map((a) => (
+          <Link key={a.id} to={`/history/${a.id}`} className="history-item history-link">
+            <div className="row-between">
+              <div className="question-meta" style={{ marginBottom: 0 }}>
                 <span className="tag">{a.question.category}</span>
                 <span className={`tag tag-${a.question.difficulty}`}>{a.question.difficulty}</span>
               </div>
-              <p className="history-question">{a.question.text}</p>
-              <div className="row-between">
-                <span className="muted">{a.date}</span>
-                <span>
-                  {a.status === "completed" ? (
-                    <strong className={a.score! >= 7 ? "score-ok" : a.score! >= 5 ? "score-mid" : "score-low"}>{a.score}/10</strong>
-                  ) : (
-                    <span className="muted">{a.status}</span>
-                  )}
-                </span>
-              </div>
-              {a.status === "completed" && a.feedback && <p className="feedback">{a.feedback}</p>}
+              <span className="history-chevron">›</span>
             </div>
-          ))}
-        </div>
-        {nextCursor && (
-          <button className="btn btn-secondary" onClick={() => void load(nextCursor)} disabled={busy}>
-            Load more
-          </button>
-        )}
+            <p className="history-question">{a.question.text}</p>
+            <div className="row-between">
+              <span className="muted">{a.date}</span>
+              <span>
+                {a.status === "completed" ? (
+                  <strong className={a.score! >= 7 ? "score-ok" : a.score! >= 5 ? "score-mid" : "score-low"}>{a.score}/10</strong>
+                ) : (
+                  <span className="muted">{a.status}</span>
+                )}
+              </span>
+            </div>
+          </Link>
+        ))}
       </div>
+      {nextCursor && (
+        <button className="btn btn-secondary" onClick={() => void load(nextCursor)} disabled={busy}>
+          Load more
+        </button>
+      )}
       <Link className="muted" to="/">
         ← Back to today
       </Link>

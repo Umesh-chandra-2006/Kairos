@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { AnswerDetail } from "./pages/AnswerDetail";
 import { Dashboard } from "./pages/Dashboard";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { History } from "./pages/History";
@@ -43,6 +44,7 @@ export function App() {
         <Route path="/streak" element={<Streak />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/history" element={<History />} />
+        <Route path="/history/:id" element={<AnswerDetail />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
 

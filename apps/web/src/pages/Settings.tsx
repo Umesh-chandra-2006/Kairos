@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { api } from "../api/client";
+import { useTheme } from "../theme/ThemeProvider";
 import { WebPushCard } from "../components/WebPushCard";
 import { ErrorBanner, Field, SuccessBanner } from "../components/forms";
 
@@ -12,6 +13,7 @@ interface Prefs {
 }
 
 export function Settings() {
+  const { theme, resolved, setTheme } = useTheme();
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -65,6 +67,24 @@ export function Settings() {
 
   return (
     <div className="stack">
+      <div className="card">
+        <h2 className="card-title">Appearance</h2>
+        <div className="segmented">
+          <button type="button" className={theme === "light" ? "seg-active" : ""} onClick={() => setTheme("light")}>
+            Light
+          </button>
+          <button type="button" className={theme === "dark" ? "seg-active" : ""} onClick={() => setTheme("dark")}>
+            Dark
+          </button>
+          <button type="button" className={theme === "system" ? "seg-active" : ""} onClick={() => setTheme("system")}>
+            System
+          </button>
+        </div>
+        <p className="muted" style={{ marginTop: 12 }}>
+          Currently using {resolved === "dark" ? "dark" : "light"} mode.
+        </p>
+      </div>
+
       <div className="card">
         <h2 className="card-title">Notification preferences</h2>
         <form onSubmit={savePrefs} className="form">

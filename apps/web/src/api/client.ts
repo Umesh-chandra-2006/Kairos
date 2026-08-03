@@ -275,3 +275,81 @@ export function connectAnswerStream(
   };
   return () => es.close();
 }
+
+export interface EvalResultData {
+  score: number;
+  feedback: string;
+  modelAnswer: string;
+  streak: { current: number; longest: number } | null;
+}
+
+/**
+ * Reliable result delivery for a submitted answer. Polls GET /api/answers/:id
+ * as the source of truth so the result ALWAYS resolves, and layers the SSE
+ * token stream on top purely for live token feedback. SSE failures (e.g. a
+ * dropped connection) are ignored — they never block the outcome.
+ */
+export function watchAnswerResult(
+  answerId: number,
+  handlers: {
+    onToken?: (delta: string) => void;
+    onDone: (data: EvalResultData) => void;
+    onError: (message: string) => void;
+  },
+): () => void {
+  let cancelled = false;
+  let finished = false;
+  let timer: ReturnType<typeof setInterval> | null = null;
+  let closeSse: (() => void) | null = null;
+
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    closeSse?.();
+    if (timer) clearInterval(timer);
+  };
+
+  const poll = async () => {
+    try {
+      const { answer } = await api.answer(answerId);
+      if (cancelled || finished) return;
+      if (answer.status === "completed") {
+        finish();
+        handlers.onDone({
+          score: answer.score!,
+          feedback: answer.feedback ?? "",
+          modelAnswer: answer.modelAnswer ?? "",
+          streak: null,
+        });
+      } else if (answer.status === "failed") {
+        finish();
+        handlers.onError(answer.errorMessage ?? "Evaluation failed");
+      }
+    } catch {
+      /* transient network error — keep polling */
+    }
+  };
+
+  timer = setInterval(poll, 1500);
+  void poll();
+
+  closeSse = connectAnswerStream(answerId, {
+    onToken: (delta) => {
+      if (!cancelled && !finished) handlers.onToken?.(delta);
+    },
+    onDone: (data) => {
+      if (!cancelled && !finished) {
+        finish();
+        handlers.onDone(data);
+      }
+    },
+    onError: () => {
+      /* SSE is optional — polling is authoritative */
+    },
+  });
+
+  return () => {
+    cancelled = true;
+    finish();
+  };
+}

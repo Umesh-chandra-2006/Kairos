@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import type { TodayQuestionResponse } from "@kairos/shared";
-import { api, connectAnswerStream } from "../api/client";
+import { api, watchAnswerResult } from "../api/client";
 import { ErrorBanner } from "../components/forms";
+import { AnswerResultView } from "../components/AnswerResultView";
 
 type Phase =
   | { name: "loading" }
@@ -14,6 +15,7 @@ type Phase =
 
 export function Dashboard() {
   const [phase, setPhase] = useState<Phase>({ name: "loading" });
+  const [reloadKey, setReloadKey] = useState(0);
   const [answerText, setAnswerText] = useState("");
   const [tokens, setTokens] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -22,6 +24,8 @@ export function Dashboard() {
 
   useEffect(() => {
     let mounted = true;
+    setPhase({ name: "loading" });
+    setError(null);
     api
       .today()
       .then((data) => {
@@ -43,17 +47,20 @@ export function Dashboard() {
       mounted = false;
       closeRef.current?.();
     };
-  }, []);
+  }, [reloadKey]);
 
   async function submit() {
     if (phase.name !== "idle" || !phase.data.question) return;
+    const todayData = phase.data;
+    const question = todayData.question;
+    if (!question) return;
     setError(null);
     setPhase({ name: "submitting" });
     try {
-      const { answerId } = await api.submitAnswer(phase.data.question.id, answerText);
+      const { answerId } = await api.submitAnswer(question.id, answerText);
       setTokens("");
       setPhase({ name: "evaluating" });
-      closeRef.current = connectAnswerStream(answerId, {
+      closeRef.current = watchAnswerResult(answerId, {
         onToken: (delta) => setTokens((prev) => prev + delta),
         onDone: (data) => {
           setPhase({
@@ -63,23 +70,39 @@ export function Dashboard() {
             modelAnswer: data.modelAnswer,
             streak: data.streak,
           });
+          api
+            .streak()
+            .then(({ streak: s }) => setStreak({ current: s.current, longest: s.longest }))
+            .catch(() => undefined);
         },
-        onError: (message) => setPhase({ name: "failed", message }),
+        onError: (message) => setPhase({ name: "failed", message, data: todayData }),
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not submit your answer");
-      setPhase({ name: "idle", data: (phase as { name: "idle"; data: TodayQuestionResponse }).data });
+      setPhase({ name: "idle", data: todayData });
     }
   }
 
   if (phase.name === "loading") {
-    return <div className="card">Loading today's question…</div>;
+    return (
+      <div className="card">
+        <div className="eval-header">
+          <span className="spinner" />
+          <span>Loading today's question…</span>
+        </div>
+      </div>
+    );
   }
 
   if (phase.name === "failed" && !phase.data) {
     return (
       <div className="card">
-        <ErrorBanner message={error} />
+        <ErrorBanner message={phase.message ?? error} />
+        <div className="row-end">
+          <button className="btn btn-primary" onClick={() => setReloadKey((k) => k + 1)}>
+            Try again
+          </button>
+        </div>
       </div>
     );
   }
@@ -92,8 +115,8 @@ export function Dashboard() {
         <h2 className="card-title">You're done for today</h2>
         <p className="muted">You've already answered today's question. Great job staying consistent.</p>
         {data.answerId && (
-          <Link className="btn btn-primary" to={`/history`}>
-            View your answers
+          <Link className="btn btn-primary" to={`/history/${data.answerId}`}>
+            View your result
           </Link>
         )}
         {streak && <p className="muted">Streak: {streak.current} day{streak.current === 1 ? "" : "s"}</p>}
@@ -111,7 +134,7 @@ export function Dashboard() {
         )}
       </div>
 
-      {data?.question && (
+      {phase.name === "idle" && data?.question && (
         <div className="card">
           <div className="question-meta">
             <span className="tag">{data.question.category}</span>
@@ -142,45 +165,26 @@ export function Dashboard() {
         <div className="card">
           <div className="eval-header">
             <span className="spinner" />
-            <span>AI is evaluating your answer{phase.name === "submitting" ? "…" : ""}</span>
+            <span>AI is evaluating your answer…</span>
           </div>
           {tokens && <p className="token-stream">{tokens}</p>}
         </div>
       )}
 
       {phase.name === "done" && (
-        <div className="stack">
-          <div className="card">
-            <div className="score-row">
-              <span className="score">{phase.score}/10</span>
-              <div className="score-label">
-                <strong>{phase.score >= 8 ? "Strong answer" : phase.score >= 5 ? "Solid effort" : "Keep practicing"}</strong>
-                {phase.streak && (
-                  <span className="muted">
-                    🔥 {phase.streak.current} day streak · longest {phase.streak.longest}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="card">
-            <h3 className="card-title">Feedback</h3>
-            <p className="feedback">{phase.feedback}</p>
-          </div>
-          <div className="card">
-            <h3 className="card-title">Model answer</h3>
-            <p className="model-answer">{phase.modelAnswer}</p>
-          </div>
-        </div>
+        <AnswerResultView
+          status="completed"
+          score={phase.score}
+          feedback={phase.feedback}
+          modelAnswer={phase.modelAnswer}
+          yourAnswer={answerText}
+          question={data?.question}
+          streak={phase.streak ?? streak}
+        />
       )}
 
       {phase.name === "failed" && (
-        <div className="card">
-          <ErrorBanner message={phase.message} />
-          <p className="muted">
-            Your answer was saved. Add an <code>OPENROUTER_API_KEY</code> to enable AI evaluation, then refresh.
-          </p>
-        </div>
+        <AnswerResultView status="failed" errorMessage={phase.message} question={data?.question} />
       )}
     </div>
   );

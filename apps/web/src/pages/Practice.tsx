@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { CATEGORIES, type Question } from "@kairos/shared";
-import { api, connectAnswerStream } from "../api/client";
+import { api, watchAnswerResult } from "../api/client";
 import { ErrorBanner } from "../components/forms";
+import { AnswerResultView } from "../components/AnswerResultView";
 
 type Phase =
   | { name: "pick" }
@@ -9,7 +10,7 @@ type Phase =
   | { name: "idle"; question: Question }
   | { name: "submitting" }
   | { name: "evaluating" }
-  | { name: "done"; score: number; feedback: string; modelAnswer: string }
+  | { name: "done"; score: number; feedback: string; modelAnswer: string; question: Question }
   | { name: "failed"; message: string };
 
 export function Practice() {
@@ -40,13 +41,14 @@ export function Practice() {
 
   async function submit() {
     if (phase.name !== "idle") return;
+    const question = phase.question;
     setError(null);
     setTokens("");
     setPhase({ name: "submitting" });
     try {
-      const { answerId } = await api.submitPractice(phase.question.id, answerText);
+      const { answerId } = await api.submitPractice(question.id, answerText);
       setPhase({ name: "evaluating" });
-      closeRef.current = connectAnswerStream(answerId, {
+      closeRef.current = watchAnswerResult(answerId, {
         onToken: (delta) => setTokens((prev) => prev + delta),
         onDone: (data) =>
           setPhase({
@@ -54,12 +56,13 @@ export function Practice() {
             score: data.score,
             feedback: data.feedback,
             modelAnswer: data.modelAnswer,
+            question,
           }),
         onError: (message) => setPhase({ name: "failed", message }),
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not submit your answer");
-      setPhase({ name: "idle", question: (phase as { name: "idle"; question: Question }).question });
+      setPhase({ name: "idle", question });
     }
   }
 
@@ -173,7 +176,7 @@ export function Practice() {
           <div className="card">
             <div className="eval-header">
               <span className="spinner" />
-              <span>AI is evaluating your answer{phase.name === "submitting" ? "…" : ""}</span>
+              <span>AI is evaluating your answer…</span>
             </div>
             {tokens && <p className="token-stream">{tokens}</p>}
           </div>
@@ -186,32 +189,19 @@ export function Practice() {
     <div className="stack">
       <div className="row-between">
         <span className="tag">{category ?? "All topics"}</span>
-        <button className="btn btn-secondary" onClick={() => setPhase({ name: "pick" })}>
+        <button className="btn btn-secondary" onClick={() => loadQuestion(category)}>
           Practice another
         </button>
       </div>
-      <div className="card">
-        <div className="score-row">
-          <span className="score">{phase.score}/10</span>
-          <div className="score-label">
-            <strong>{phase.score >= 8 ? "Strong answer" : phase.score >= 5 ? "Solid effort" : "Keep practicing"}</strong>
-            <span className="muted">Practice answer — doesn't affect your streak</span>
-          </div>
-        </div>
-      </div>
-      <div className="card">
-        <h3 className="card-title">Feedback</h3>
-        <p className="feedback">{phase.feedback}</p>
-      </div>
-      <div className="card">
-        <h3 className="card-title">Model answer</h3>
-        <p className="model-answer">{phase.modelAnswer}</p>
-      </div>
-      <div className="row-end">
-        <button className="btn btn-primary" onClick={() => loadQuestion(category)}>
-          Practice another question
-        </button>
-      </div>
+      <AnswerResultView
+        status="completed"
+        score={phase.score}
+        feedback={phase.feedback}
+        modelAnswer={phase.modelAnswer}
+        yourAnswer={answerText}
+        question={phase.question}
+        isPractice
+      />
     </div>
   );
 }
