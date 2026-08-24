@@ -2,10 +2,16 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from "react-native";
 import { api, ApiError } from "@/api/client";
 import { Screen } from "@/components/Screen";
-import { colors } from "@/theme";
+import { Card } from "@/components/Card";
+import { Eyebrow } from "@/components/Eyebrow";
+import { ScoreChip } from "@/components/ScoreChip";
+import { Pill } from "@/components/Pill";
+import { useTheme } from "@/theme/ThemeContext";
+import { fonts } from "@/theme";
 import type { AnswerWithQuestion } from "@kairos/shared";
 
 export default function HistoryScreen() {
+  const { colors } = useTheme();
   const [answers, setAnswers] = useState<AnswerWithQuestion[]>([]);
   const [nextCursor, setNextCursor] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,35 +44,59 @@ export default function HistoryScreen() {
   if (loading) {
     return (
       <Screen title="History">
-        <ActivityIndicator size="large" style={{ marginTop: 40 }} />
+        <View style={styles.center}>
+          <ActivityIndicator color={colors.accent} size="large" />
+        </View>
       </Screen>
     );
   }
 
   return (
     <Screen title="History">
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text style={[styles.error, { color: colors.danger }]}>{error}</Text> : null}
       <FlatList
         data={answers}
         keyExtractor={(item) => String(item.id)}
         onEndReached={loadMore}
         onEndReachedThreshold={0.3}
-        ListEmptyComponent={<Text style={styles.muted}>No answers yet. Answer today's question!</Text>}
-        ListFooterComponent={loadingMore ? <ActivityIndicator style={{ marginVertical: 16 }} /> : null}
+        contentContainerStyle={styles.listPadding}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <Card center>
+            <Text style={[styles.muted, { color: colors.textDim }]}>
+              No completed challenges yet. Answer today's question to build your history!
+            </Text>
+          </Card>
+        }
+        ListFooterComponent={
+          loadingMore ? (
+            <ActivityIndicator color={colors.accent} style={{ marginVertical: 16 }} />
+          ) : null
+        }
         renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.header}>
-              <Text style={styles.category}>{item.question.category}</Text>
-              <Text style={styles.date}>{new Date(item.date).toLocaleDateString()}</Text>
+          <Card>
+            <View style={styles.headerRow}>
+              <Eyebrow>{item.question.category}</Eyebrow>
+              <Text style={[styles.date, { color: colors.textDim }]}>
+                {new Date(`${item.date}T00:00:00`).toLocaleDateString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </Text>
             </View>
-            <Text style={styles.text} numberOfLines={2}>
+
+            <Text style={[styles.questionText, { color: colors.text }]} numberOfLines={2}>
               {item.question.text}
             </Text>
-            <View style={styles.footer}>
-              <Text style={styles.status}>{item.status}</Text>
-              {item.score !== null ? <Text style={styles.score}>Score {item.score}/10</Text> : null}
+
+            <View style={styles.footerRow}>
+              {item.score !== null ? (
+                <ScoreChip score={item.score} />
+              ) : (
+                <Pill icon="⏳">{item.status}</Pill>
+              )}
             </View>
-          </View>
+          </Card>
         )}
       />
     </Screen>
@@ -74,21 +104,30 @@ export default function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+  listPadding: { paddingBottom: 40 },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
   },
-  header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
-  category: { fontSize: 12, fontWeight: "700", textTransform: "uppercase", color: colors.accent },
-  date: { fontSize: 12, color: colors.muted },
-  text: { fontSize: 15, color: colors.text, marginBottom: 8 },
-  footer: { flexDirection: "row", justifyContent: "space-between" },
-  status: { fontSize: 13, color: colors.muted },
-  score: { fontSize: 13, fontWeight: "700", color: colors.success },
-  error: { color: colors.danger, marginBottom: 12 },
-  muted: { color: colors.muted, textAlign: "center", marginTop: 32 },
+  date: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
+  },
+  questionText: {
+    fontFamily: fonts.body,
+    fontSize: 15,
+    fontWeight: "600",
+    lineHeight: 21,
+    marginBottom: 12,
+  },
+  footerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  error: { fontFamily: fonts.body, fontSize: 14, marginBottom: 12 },
+  muted: { fontFamily: fonts.body, fontSize: 14, textAlign: "center", paddingVertical: 12 },
 });

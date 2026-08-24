@@ -38,6 +38,42 @@ export function getAccessToken(): string | null {
   return accessToken;
 }
 
+let sessionPromise: Promise<AuthResponse | null> | null = null;
+
+/**
+ * Restores the session on app boot using the HttpOnly refresh cookie.
+ * The /api/auth/session endpoint never 401s (it returns { user: null } when
+ * logged out), so a fresh page load produces no console errors. Single-flighted
+ * so React StrictMode's double-invoked effect results in a single request.
+ */
+export async function restoreSession(): Promise<AuthResponse | null> {
+  if (!sessionPromise) {
+    sessionPromise = (async () => {
+      try {
+        const res = await fetch("/api/auth/session", { credentials: "include" });
+        if (!res.ok) return null;
+        const data = (await res.json()) as {
+          user: PublicUser | null;
+          accessToken?: string;
+          accessTokenExpiresIn?: number;
+        };
+        if (!data.user || !data.accessToken) return null;
+        accessToken = data.accessToken;
+        return {
+          accessToken: data.accessToken,
+          accessTokenExpiresIn: data.accessTokenExpiresIn ?? 0,
+          user: data.user,
+        };
+      } catch {
+        return null;
+      } finally {
+        sessionPromise = null;
+      }
+    })();
+  }
+  return sessionPromise;
+}
+
 async function refreshAccessToken(): Promise<string | null> {
   if (refreshPromise) return refreshPromise;
   refreshPromise = (async () => {

@@ -1,14 +1,39 @@
 import path from "node:path";
+import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { z } from "zod";
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(here, "../../..");
+// When bundled for production (CommonJS output), esbuild leaves `import.meta`
+// empty, so fall back to walking up from the working directory to the
+// pnpm workspace root (the repo root), regardless of where the process starts.
+function detectProjectRoot(): string {
+  try {
+    const detected = path.dirname(fileURLToPath(import.meta.url));
+    return path.resolve(detected, "../../..");
+  } catch {
+    let dir = process.cwd();
+    for (;;) {
+      if (fs.existsSync(path.join(dir, "pnpm-workspace.yaml"))) {
+        return dir;
+      }
+      const parent = path.dirname(dir);
+      if (parent === dir) break;
+      dir = parent;
+    }
+    return process.cwd();
+  }
+}
+
+const resolvedProjectRoot = detectProjectRoot();
+
+export function getProjectRoot(): string {
+  return resolvedProjectRoot;
+}
 
 // Load the monorepo-root .env before parsing. dotenv does not override
 // variables that are already set in the process environment.
-dotenv.config({ path: path.join(projectRoot, ".env"), quiet: true });
+dotenv.config({ path: path.join(resolvedProjectRoot, ".env"), quiet: true });
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -34,7 +59,20 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(60_000),
   RATE_LIMIT_MAX: z.coerce.number().default(100),
   RATE_LIMIT_AUTH_MAX: z.coerce.number().default(10),
-});
+})
+  .superRefine((data, ctx) => {
+    if (data.NODE_ENV !== "production") return;
+    const required: Array<[keyof Env, string]> = [
+      ["REDIS_URL", "REDIS_URL is required in production (BullMQ depends on it)"],
+      ["OPENROUTER_API_KEY", "OPENROUTER_API_KEY is required in production (AI evaluation)"],
+      ["RESEND_API_KEY", "RESEND_API_KEY is required in production (transactional email)"],
+    ];
+    for (const [key, message] of required) {
+      if (!data[key]) {
+        ctx.addIssue({ code: "custom", path: [key as string], message });
+      }
+    }
+  });
 
 export type Env = z.infer<typeof envSchema>;
 

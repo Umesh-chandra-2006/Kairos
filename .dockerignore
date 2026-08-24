@@ -1,0 +1,17 @@
+node_modules
+**/node_modules
+.pnpm-store
+.git
+.env
+.env.*
+**/.env
+**/.env.*
+dist
+**/dist
+*.log
+**/*.log
+.docker-volumes
+apps/mobile/.expo
+apps/web/dist
+apps/api/dist
+coverage

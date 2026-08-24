@@ -16,6 +16,7 @@ export function getPool(): mysql.Pool {
       connectionLimit: 10,
       waitForConnections: true,
       queueLimit: 0,
+      connectTimeout: 5_000,
     });
   }
   return pool;
@@ -29,7 +30,7 @@ export function getDb(): DB {
 }
 
 export function createDbFromUrl(url: string): DB {
-  const p = mysql.createPool({ uri: url, connectionLimit: 5 });
+  const p = mysql.createPool({ uri: url, connectionLimit: 5, connectTimeout: 5_000 });
   return drizzle(p, { schema, mode: "default" });
 }
 

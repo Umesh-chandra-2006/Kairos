@@ -1,6 +1,7 @@
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import type { TextInputProps } from "react-native";
-import { colors, radius } from "../theme";
+import { useTheme } from "@/theme/ThemeContext";
+import { fonts, radii, typescale } from "@/theme";
 
 interface FieldProps extends TextInputProps {
   label: string;
@@ -8,52 +9,68 @@ interface FieldProps extends TextInputProps {
   helper?: string;
 }
 
+/**
+ * Design-system text input.
+ * - Label: IBM Plex Mono, uppercase, accent color (eyebrow style)
+ * - Input: surface fill, line border, radius-sm
+ * - Error: danger color caption
+ */
 export function Field({ label, error, helper, style, ...props }: FieldProps) {
+  const { colors } = useTheme();
+
   return (
-    <View style={styles.wrap}>
-      <Text style={styles.label}>{label}</Text>
+    <View style={styles.wrapper}>
+      <Text style={[styles.label, { color: colors.accent }]}>
+        {label.toUpperCase()}
+      </Text>
       <TextInput
-        style={[styles.input, error ? styles.inputError : null, style]}
-        placeholderTextColor={colors.muted}
+        style={[
+          styles.input,
+          {
+            backgroundColor: colors.surface,
+            borderColor: error ? colors.danger : colors.line,
+            color: colors.text,
+          },
+          style,
+        ]}
+        placeholderTextColor={colors.textDim}
         {...props}
       />
-      {helper && !error ? <Text style={styles.helper}>{helper}</Text> : null}
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <Text style={[styles.error, { color: colors.danger }]}>{error}</Text>
+      ) : helper ? (
+        <Text style={[styles.helper, { color: colors.textDim }]}>{helper}</Text>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    marginBottom: 16,
+  wrapper: {
+    marginBottom: 14,
   },
   label: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: 6,
+    fontFamily: fonts.monoSemiBold,
+    fontSize: 10.5,
+    letterSpacing: 1.5,
+    marginBottom: 7,
   },
   input: {
-    height: 48,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    color: colors.text,
-    backgroundColor: colors.surface,
-  },
-  inputError: {
-    borderColor: colors.danger,
+    borderRadius: radii.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    fontSize: typescale.body.fontSize,
+    fontFamily: fonts.bodyMedium,
   },
   error: {
-    marginTop: 4,
-    fontSize: 13,
-    color: colors.danger,
+    fontFamily: fonts.bodyMedium,
+    fontSize: typescale.caption.fontSize,
+    marginTop: 5,
   },
   helper: {
-    marginTop: 4,
-    fontSize: 12,
-    color: colors.muted,
+    fontFamily: fonts.bodyMedium,
+    fontSize: typescale.caption.fontSize,
+    marginTop: 5,
   },
 });

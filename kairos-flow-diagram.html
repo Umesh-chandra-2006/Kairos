@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kairos — Screen Flow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0E13; --surface:#141A22; --surface-2:#1B222C; --text:#ECEFF3; --text-dim:#8A93A1;
+    --accent:#E8B84B; --accent-ink:#2A1F05; --accent2:#4FC2B8; --line:#232B35; --danger:#E8735F;
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; padding:40px 20px 60px; display:flex; flex-direction:column; align-items:center; }
+  .head{ max-width:920px; width:100%; margin-bottom:28px; }
+  .eyebrow{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); }
+  h1{ font-family:'Space Grotesk',sans-serif; font-size:26px; margin:8px 0 6px; }
+  p{ color:var(--text-dim); font-size:14px; max-width:640px; line-height:1.5; }
+  .canvas{ max-width:960px; width:100%; }
+  .node{ fill:var(--surface); stroke:var(--line); stroke-width:1.4; rx:12; }
+  .node-core{ fill:var(--surface-2); stroke:var(--accent); }
+  .label{ font-family:'Space Grotesk',sans-serif; font-size:13px; fill:var(--text); font-weight:600; }
+  .sub{ font-family:'IBM Plex Mono',monospace; font-size:9.5px; fill:var(--text-dim); letter-spacing:.04em; }
+  .edge{ stroke:var(--line); stroke-width:1.6; fill:none; marker-end:url(#arrow); }
+  .edge-loop{ stroke:var(--accent2); stroke-width:1.6; fill:none; stroke-dasharray:4 3; marker-end:url(#arrow2); }
+  .legend{ display:flex; gap:22px; margin-top:22px; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-dim); }
+  .legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .swatch{ width:14px; height:2px; display:inline-block; }
+</style>
+</head>
+<body>
+  <div class="head">
+    <div class="eyebrow">Kairos · Mobile</div>
+    <h1>Screen flow</h1>
+    <p>Primary path from first open to a completed ritual, plus the persistent tab-bar loop between the four core screens.</p>
+  </div>
+
+  <svg class="canvas" viewBox="0 0 960 640" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--line)"/></marker>
+      <marker id="arrow2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent2)"/></marker>
+    </defs>
+
+    <!-- onboarding -> auth -> home -->
+    <rect class="node" x="20" y="40" width="150" height="56" rx="12"/>
+    <text x="95" y="63" text-anchor="middle" class="label">Onboarding</text>
+    <text x="95" y="80" text-anchor="middle" class="sub">3-SLIDE INTRO</text>
+
+    <rect class="node" x="220" y="40" width="150" height="56" rx="12"/>
+    <text x="295" y="63" text-anchor="middle" class="label">Auth</text>
+    <text x="295" y="80" text-anchor="middle" class="sub">SIGN IN / SIGN UP</text>
+
+    <rect class="node node-core" x="420" y="40" width="150" height="56" rx="12"/>
+    <text x="495" y="63" text-anchor="middle" class="label">Home</text>
+    <text x="495" y="80" text-anchor="middle" class="sub">DAILY RITUAL</text>
+
+    <path class="edge" d="M170,68 H220"/>
+    <path class="edge" d="M370,68 H420"/>
+
+    <!-- tab bar core loop -->
+    <rect class="node" x="220" y="180" width="150" height="56" rx="12"/>
+    <text x="295" y="203" text-anchor="middle" class="label">Practice Hub</text>
+    <text x="295" y="220" text-anchor="middle" class="sub">19 CATEGORIES</text>
+
+    <rect class="node" x="620" y="180" width="150" height="56" rx="12"/>
+    <text x="695" y="203" text-anchor="middle" class="label">Progress</text>
+    <text x="695" y="220" text-anchor="middle" class="sub">STREAKS + SKILL MAP</text>
+
+    <rect class="node" x="620" y="320" width="150" height="56" rx="12"/>
+    <text x="695" y="343" text-anchor="middle" class="label">History</text>
+    <text x="695" y="360" text-anchor="middle" class="sub">PAST ANSWERS</text>
+
+    <rect class="node" x="420" y="320" width="150" height="56" rx="12"/>
+    <text x="495" y="343" text-anchor="middle" class="label">Profile</text>
+    <text x="495" y="360" text-anchor="middle" class="sub">SETTINGS · LOGOUT</text>
+
+    <!-- main task path -->
+    <rect class="node node-core" x="220" y="460" width="150" height="56" rx="12"/>
+    <text x="295" y="483" text-anchor="middle" class="label">Answer</text>
+    <text x="295" y="500" text-anchor="middle" class="sub">TIMED TEXTAREA</text>
+
+    <rect class="node node-core" x="420" y="460" width="150" height="56" rx="12"/>
+    <text x="495" y="483" text-anchor="middle" class="label">AI Evaluation</text>
+    <text x="495" y="500" text-anchor="middle" class="sub">SCORE + MODEL ANSWER</text>
+
+    <!-- edges: home -> tab bar core -->
+    <path class="edge" d="M495,96 V140 H295 V180" />
+    <path class="edge" d="M495,96 V140 H695 V180" />
+    <path class="edge" d="M495,96 V140 H495 V320" />
+    <path class="edge" d="M495,96 V140 H695 V320" />
+
+    <!-- home -> start challenge -> answer -->
+    <path class="edge" d="M495,96 V400 H295 V460" />
+    <text x="330" y="415" class="sub">Start Today's Challenge</text>
+
+    <!-- practice -> answer (tap category) -->
+    <path class="edge" d="M295,236 V460"/>
+    <text x="230" y="350" class="sub" transform="rotate(-90 230 350)">tap category</text>
+
+    <!-- answer -> evaluation -->
+    <path class="edge" d="M370,488 H420"/>
+    <text x="380" y="478" class="sub">submit</text>
+
+    <!-- evaluation -> history (loop, dashed) -->
+    <path class="edge-loop" d="M570,488 H770 V376"/>
+    <text x="700" y="470" class="sub" fill="var(--accent2)">view history</text>
+
+    <!-- evaluation -> home (loop, dashed) -->
+    <path class="edge-loop" d="M495,460 V420 H495 V96"/>
+    <text x="440" y="440" class="sub" fill="var(--accent2)">back to ritual</text>
+
+  </svg>
+
+  <div class="legend">
+    <span><span class="swatch" style="background:var(--line);"></span> primary navigation</span>
+    <span><span class="swatch" style="background:var(--accent2);"></span> return / loop path</span>
+    <span><span class="swatch" style="background:var(--accent);width:8px;height:8px;border-radius:50%;display:inline-block;"></span> core ritual screens</span>
+  </div>
+</body>
+</html>

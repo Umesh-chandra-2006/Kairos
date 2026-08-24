@@ -12,7 +12,9 @@
     "dev:api": "pnpm --filter @kairos/api dev",
     "dev:web": "pnpm --filter @kairos/web dev",
     "dev:mobile": "pnpm --filter @kairos/mobile start",
-    "build": "pnpm -r build",
+    "build": "pnpm --filter @kairos/api --filter @kairos/web build",
+    "build:prod": "pnpm --filter @kairos/api --filter @kairos/web build",
+    "start:prod": "node apps/api/dist/index.cjs",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
@@ -20,7 +22,10 @@
     "db:migrate": "pnpm --filter @kairos/db db:migrate",
     "db:seed": "pnpm --filter @kairos/db db:seed",
     "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down"
+    "docker:down": "docker compose down",
+    "deploy:prod": "docker compose -f deploy/docker-compose.prod.yml up -d --build",
+    "deploy:logs": "docker compose -f deploy/docker-compose.prod.yml logs -f api",
+    "backup:prod": "sh deploy/backup.sh"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["esbuild", "drizzle-kit"]

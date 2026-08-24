@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { OnboardingInput, PublicUser } from "@kairos/shared";
-import { api, bootstrapTokens, setAccessToken } from "../api/client";
-import { clearTokens, getUser, saveUser } from "../api/storage";
+import { api, bootstrapTokens, resetApiUrl, setAccessToken, setApiUrl } from "../api/client";
+import { clearTokens, getApiUrlOverride, getUser, saveUser } from "../api/storage";
 
 interface AuthContextValue {
   user: PublicUser | null;
@@ -35,6 +35,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
     (async () => {
+      const override = await getApiUrlOverride();
+      if (override) setApiUrl(override);
+      else resetApiUrl();
       await bootstrapTokens();
       const cached = await getUser();
       if (cached) {

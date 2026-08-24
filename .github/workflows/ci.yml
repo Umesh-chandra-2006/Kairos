@@ -62,4 +62,4 @@ jobs:
         run: pnpm --filter @kairos/api test
 
       - name: Build
-        run: pnpm --filter @kairos/api --filter @kairos/web --filter @kairos/shared --filter @kairos/config --filter @kairos/email build
+        run: pnpm --filter @kairos/api --filter @kairos/web build

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { OnboardingInput, PublicUser } from "@kairos/shared";
-import { api, getAccessToken, setAccessToken, unregisterWebPush } from "../api/client";
+import { api, getAccessToken, restoreSession, setAccessToken, unregisterWebPush } from "../api/client";
 
 interface AuthContextValue {
   user: PublicUser | null;
@@ -32,13 +32,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
     setLoading(true);
-    api
-      .me()
-      .then(({ user: me }) => {
-        if (mounted) setUser(me);
-      })
-      .catch(() => {
-        if (mounted) setUser(null);
+    void restoreSession()
+      .then((session) => {
+        if (mounted) setUser(session ? session.user : null);
       })
       .finally(() => {
         if (mounted) setLoading(false);

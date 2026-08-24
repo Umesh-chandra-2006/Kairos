@@ -4,6 +4,19 @@ const ACCESS_TOKEN_KEY = "kairos.accessToken";
 const REFRESH_TOKEN_KEY = "kairos.refreshToken";
 const USER_KEY = "kairos.user";
 const EXPO_PUSH_TOKEN_KEY = "kairos.expoPushToken";
+const API_URL_OVERRIDE_KEY = "kairos.apiUrlOverride";
+
+export async function getApiUrlOverride(): Promise<string | null> {
+  return SecureStore.getItemAsync(API_URL_OVERRIDE_KEY);
+}
+
+export async function setApiUrlOverride(url: string): Promise<void> {
+  await SecureStore.setItemAsync(API_URL_OVERRIDE_KEY, url);
+}
+
+export async function clearApiUrlOverride(): Promise<void> {
+  await SecureStore.deleteItemAsync(API_URL_OVERRIDE_KEY);
+}
 
 export async function saveTokens(accessToken: string, refreshToken?: string): Promise<void> {
   await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, accessToken);

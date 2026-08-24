@@ -24,8 +24,24 @@ describe("loadEnv", () => {
   });
 
   it("honors explicit overrides over process.env", () => {
-    const env = loadEnv({ ...base, NODE_ENV: "production" });
+    const env = loadEnv({
+      ...base,
+      NODE_ENV: "production",
+      REDIS_URL: "redis://localhost:6379",
+      OPENROUTER_API_KEY: "sk-override",
+      RESEND_API_KEY: "re_override",
+    });
     expect(env.NODE_ENV).toBe("production");
+    expect(env.OPENROUTER_API_KEY).toBe("sk-override");
+  });
+
+  it("requires REDIS_URL, OPENROUTER_API_KEY and RESEND_API_KEY in production", () => {
+    expect(() => loadEnv({ ...base, NODE_ENV: "production", REDIS_URL: "redis://localhost:6379" })).toThrow(
+      /OPENROUTER_API_KEY.*required in production.*RESEND_API_KEY.*required in production/s,
+    );
+    expect(() =>
+      loadEnv({ ...base, NODE_ENV: "production", REDIS_URL: "", OPENROUTER_API_KEY: "sk-x", RESEND_API_KEY: "re_x" }),
+    ).toThrow(/REDIS_URL.*required in production/);
   });
 
   it("throws a descriptive error when a required variable is missing", () => {

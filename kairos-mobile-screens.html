@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-fidelity="hifi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kairos — Mobile Screens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --radius-lg:26px; --radius-md:16px; --radius-sm:10px;
+  --font-display:'Space Grotesk',sans-serif;
+  --font-body:'Inter',sans-serif;
+  --font-mono:'IBM Plex Mono',monospace;
+}
+
+/* ---------- HI-FI THEME TOKENS ---------- */
+html[data-theme="dark"][data-fidelity="hifi"]{
+  --bg:#0A0E13; --surface:#141A22; --surface-2:#1B222C; --text:#ECEFF3; --text-dim:#8A93A1;
+  --accent:#E8B84B; --accent-ink:#2A1F05; --accent2:#4FC2B8; --line:#232B35; --danger:#E8735F;
+  --shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+html[data-theme="light"][data-fidelity="hifi"]{
+  --bg:#F1F1EE; --surface:#FFFFFF; --surface-2:#F7F6F2; --text:#181C22; --text-dim:#6B7280;
+  --accent:#C6862A; --accent-ink:#FFF7E6; --accent2:#2E8F86; --line:#E3E2DC; --danger:#C6482F;
+  --shadow: 0 20px 50px rgba(20,20,10,.12);
+}
+/* ---------- WIREFRAME TOKENS ---------- */
+html[data-theme="dark"][data-fidelity="wire"]{
+  --bg:#161616; --surface:#1F1F1F; --surface-2:#262626; --text:#D8D8D8; --text-dim:#8A8A8A;
+  --accent:#9A9A9A; --accent-ink:#161616; --accent2:#7E7E7E; --line:#4A4A4A; --danger:#9A9A9A;
+  --shadow:none;
+}
+html[data-theme="light"][data-fidelity="wire"]{
+  --bg:#EDEDED; --surface:#FAFAFA; --surface-2:#F1F1F1; --text:#2B2B2B; --text-dim:#7A7A7A;
+  --accent:#8C8C8C; --accent-ink:#FAFAFA; --accent2:#9E9E9E; --line:#B9B9B9; --danger:#8C8C8C;
+  --shadow:none;
+}
+
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  background:var(--bg); font-family:var(--font-body); color:var(--text);
+  min-height:100vh; display:flex; flex-direction:column; align-items:center;
+  padding:28px 16px 60px; transition:background .25s ease, color .25s ease;
+}
+html[data-fidelity="wire"] body{ font-family: Arial, Helvetica, sans-serif; }
+
+/* ===== control bar ===== */
+.controlbar{
+  width:100%; max-width:1100px; display:flex; flex-wrap:wrap; gap:10px;
+  align-items:center; justify-content:space-between; margin-bottom:26px;
+}
+.brand{ display:flex; align-items:center; gap:10px; font-family:var(--font-display); font-weight:700; font-size:18px; letter-spacing:.02em;}
+.brand .dot{width:10px;height:10px;border-radius:50%;background:var(--accent);}
+.toggles{ display:flex; gap:8px; flex-wrap:wrap; }
+.toggle-group{ display:flex; background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:3px; gap:2px;}
+.toggle-group button{
+  border:none; background:transparent; color:var(--text-dim); font-family:var(--font-body);
+  font-size:12.5px; font-weight:600; padding:7px 14px; border-radius:999px; cursor:pointer;
+  transition:all .15s ease; letter-spacing:.01em;
+}
+.toggle-group button.active{ background:var(--accent); color:var(--accent-ink); }
+
+.tabs{
+  width:100%; max-width:1100px; display:flex; gap:6px; overflow-x:auto;
+  padding-bottom:14px; margin-bottom:8px; scrollbar-width:thin;
+}
+.tabs button{
+  flex:0 0 auto; border:1px solid var(--line); background:var(--surface); color:var(--text-dim);
+  font-family:var(--font-body); font-size:12.5px; font-weight:600; padding:8px 14px;
+  border-radius:10px; cursor:pointer; white-space:nowrap; transition:all .15s ease;
+}
+.tabs button.active{ border-color:var(--accent); color:var(--text); background:var(--surface-2); box-shadow: inset 0 0 0 1px var(--accent); }
+
+/* ===== phone frame ===== */
+.stage{ display:flex; justify-content:center; width:100%; }
+.phone{
+  width:375px; height:812px; background:var(--surface); border-radius:44px;
+  border:10px solid #05070a; box-shadow:var(--shadow); position:relative; overflow:hidden;
+  flex-shrink:0;
+}
+html[data-fidelity="wire"] .phone{ border-color:#000; box-shadow:none; }
+html[data-theme="light"] .phone{ border-color:#111; }
+.notch{
+  position:absolute; top:0; left:50%; transform:translateX(-50%); width:120px; height:26px;
+  background:#05070a; border-radius:0 0 16px 16px; z-index:50;
+}
+.screen-viewport{ width:100%; height:100%; position:relative; }
+.screen{ position:absolute; inset:0; display:none; flex-direction:column; background:var(--bg); }
+.screen.active{ display:flex; }
+.screen-scroll{ flex:1; overflow-y:auto; padding:20px 20px 90px; }
+.screen-scroll::-webkit-scrollbar{ width:0; }
+
+/* ===== shared bits ===== */
+.status-row{ display:flex; justify-content:space-between; padding:16px 22px 4px; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); }
+.h1{ font-family:var(--font-display); font-size:26px; font-weight:700; letter-spacing:-.01em; }
+.h2{ font-family:var(--font-display); font-size:18px; font-weight:600; }
+.eyebrow{ font-family:var(--font-mono); font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); }
+.muted{ color:var(--text-dim); font-size:13.5px; line-height:1.5; }
+.card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md); padding:16px; }
+.pill{ display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:999px; font-size:11px; font-weight:600; background:var(--surface-2); border:1px solid var(--line); color:var(--text-dim); font-family:var(--font-mono); }
+.btn-primary{
+  width:100%; padding:15px; border-radius:var(--radius-sm); border:none; background:var(--accent);
+  color:var(--accent-ink); font-family:var(--font-body); font-weight:700; font-size:14.5px; cursor:pointer;
+  letter-spacing:.01em;
+}
+.btn-secondary{
+  width:100%; padding:14px; border-radius:var(--radius-sm); border:1px solid var(--line); background:transparent;
+  color:var(--text); font-family:var(--font-body); font-weight:600; font-size:14px; cursor:pointer;
+}
+.icon{ width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:1.8; }
+
+/* placeholder art (wireframe crosshatch vs hifi motif) */
+.placeholder-art{ border-radius:var(--radius-md); display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;}
+html[data-fidelity="hifi"] .placeholder-art{ background: radial-gradient(circle at 30% 20%, color-mix(in srgb, var(--accent) 35%, transparent), transparent 60%), var(--surface-2); }
+html[data-fidelity="wire"] .placeholder-art{
+  background: repeating-linear-gradient(45deg, var(--surface-2), var(--surface-2) 8px, var(--surface) 8px, var(--surface) 16px);
+  border:1px dashed var(--line);
+}
+.placeholder-art span{ font-family:var(--font-mono); font-size:11px; color:var(--text-dim); background:var(--bg); padding:3px 8px; border-radius:6px; }
+html[data-fidelity="hifi"] .placeholder-art span{ display:none; }
+
+/* ===== bottom nav ===== */
+.bottomnav{
+  position:absolute; bottom:0; left:0; right:0; height:78px; background:var(--surface);
+  border-top:1px solid var(--line); display:flex; align-items:flex-start; justify-content:space-around;
+  padding-top:10px; z-index:40;
+}
+.navitem{ display:flex; flex-direction:column; align-items:center; gap:4px; color:var(--text-dim); background:none; border:none; cursor:pointer; font-family:var(--font-body); font-size:10px; font-weight:600; }
+.navitem.active{ color:var(--accent); }
+
+/* ===== onboarding ===== */
+.onb-dots{ display:flex; gap:6px; justify-content:center; margin:18px 0; }
+.onb-dots span{ width:6px; height:6px; border-radius:50%; background:var(--line); }
+.onb-dots span.on{ background:var(--accent); width:18px; border-radius:4px; }
+
+/* ===== auth ===== */
+.authtabs{ display:flex; background:var(--surface-2); border-radius:12px; padding:4px; margin-bottom:22px; }
+.authtabs button{ flex:1; padding:10px; border:none; background:transparent; border-radius:9px; font-weight:700; font-size:13px; color:var(--text-dim); cursor:pointer; font-family:var(--font-body); }
+.authtabs button.active{ background:var(--accent); color:var(--accent-ink); }
+.field{ margin-bottom:14px; }
+.field label{ display:block; font-size:11.5px; font-weight:600; color:var(--text-dim); margin-bottom:6px; font-family:var(--font-mono); letter-spacing:.03em; }
+.field input{ width:100%; padding:13px 14px; border-radius:var(--radius-sm); border:1px solid var(--line); background:var(--surface); color:var(--text); font-size:14px; font-family:var(--font-body); }
+.divider{ display:flex; align-items:center; gap:10px; margin:18px 0; color:var(--text-dim); font-size:11px; font-family:var(--font-mono); }
+.divider::before,.divider::after{ content:""; flex:1; height:1px; background:var(--line); }
+
+/* ===== ring (signature element) ===== */
+.ring-wrap{ position:relative; display:flex; align-items:center; justify-content:center; }
+.ring-wrap svg{ transform:rotate(-90deg); }
+.ring-center{ position:absolute; text-align:center; }
+.ring-center .big{ font-family:var(--font-mono); font-weight:600; }
+
+/* ===== practice hub grid ===== */
+.cat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+.cat-card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md); padding:14px; display:flex; flex-direction:column; gap:24px; cursor:pointer; transition:border-color .15s ease;}
+.cat-card:hover{ border-color:var(--accent); }
+.cat-card .top{ display:flex; justify-content:space-between; align-items:flex-start; }
+.cat-badge{ width:32px; height:32px; border-radius:9px; background:var(--surface-2); display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-weight:700; font-size:12px; color:var(--accent); }
+.group-label{ font-family:var(--font-mono); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-dim); margin:20px 0 8px; }
+.group-label:first-child{ margin-top:0; }
+
+/* history */
+.hist-row{ display:flex; gap:12px; align-items:center; padding:13px 0; border-bottom:1px solid var(--line); }
+.hist-row:last-child{ border-bottom:none; }
+.score-chip{ width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-weight:700; font-size:12px; flex-shrink:0; }
+
+/* heatmap */
+.heatmap{ display:grid; grid-template-columns:repeat(11,1fr); gap:4px; margin-top:10px; }
+.heatmap div{ aspect-ratio:1; border-radius:3px; background:var(--surface-2); }
+
+/* settings rows */
+.settings-row{ display:flex; justify-content:space-between; align-items:center; padding:14px 2px; border-bottom:1px solid var(--line); font-size:14px; }
+.settings-row:last-child{ border-bottom:none; }
+
+footer.note{ max-width:1100px; margin-top:22px; color:var(--text-dim); font-size:12px; text-align:center; font-family:var(--font-mono); }
+</style>
+</head>
+<body>
+
+<div class="controlbar">
+  <div class="brand"><span class="dot"></span>Kairos — Mobile Screens</div>
+  <div class="toggles">
+    <div class="toggle-group" id="fidelityGroup">
+      <button data-fid="wire">Wireframe</button>
+      <button data-fid="hifi" class="active">Hi-Fi</button>
+    </div>
+    <div class="toggle-group" id="themeGroup">
+      <button data-theme="light">Light</button>
+      <button data-theme="dark" class="active">Dark</button>
+    </div>
+  </div>
+</div>
+
+<div class="tabs" id="tabs">
+  <button data-target="onboarding" class="active">Onboarding</button>
+  <button data-target="auth">Auth</button>
+  <button data-target="home">Daily Ritual</button>
+  <button data-target="practice">Practice Hub</button>
+  <button data-target="answer">Answer</button>
+  <button data-target="evaluation">AI Evaluation</button>
+  <button data-target="progress">Progress</button>
+  <button data-target="history">History</button>
+  <button data-target="profile">Profile</button>
+</div>
+
+<div class="stage">
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen-viewport">
+
+      <!-- ONBOARDING -->
+      <section class="screen active" data-screen="onboarding">
+        <div class="status-row"><span>9:41</span><span>KAIROS</span></div>
+        <div class="screen-scroll" style="display:flex;flex-direction:column;justify-content:center;flex:1;text-align:center;">
+          <div class="placeholder-art" style="height:220px;margin-bottom:26px;"><span>ART — RITUAL MOTIF</span>
+            <svg id="onbRing" width="140" height="140" viewBox="0 0 140 140"></svg>
+          </div>
+          <div class="eyebrow">01 / 03</div>
+          <h1 class="h1" style="margin:10px 0 10px;">One challenge. Every day. No exceptions.</h1>
+          <p class="muted">Every engineer on Kairos gets the exact same technical challenge every 24 hours — deterministic, shared, and impossible to game.</p>
+          <div class="onb-dots"><span class="on"></span><span></span><span></span></div>
+        </div>
+        <div style="padding:20px;">
+          <button class="btn-primary" onclick="go('auth')">Get Started</button>
+          <div style="text-align:center;margin-top:12px;"><span class="muted" style="cursor:pointer;" onclick="go('auth')">Skip</span></div>
+        </div>
+      </section>
+
+      <!-- AUTH -->
+      <section class="screen" data-screen="auth">
+        <div class="status-row"><span>9:41</span><span>KAIROS</span></div>
+        <div class="screen-scroll">
+          <div class="eyebrow">Welcome</div>
+          <h1 class="h1" style="margin:8px 0 22px;">Begin the ritual.</h1>
+          <div class="authtabs">
+            <button class="active">Sign In</button>
+            <button>Create Account</button>
+          </div>
+          <div class="field"><label>Email</label><input type="text" placeholder="you@domain.com"></div>
+          <div class="field"><label>Password</label><input type="password" placeholder="••••••••••"></div>
+          <div style="text-align:right;margin-bottom:18px;"><span class="muted" style="font-size:12px;">Forgot password?</span></div>
+          <button class="btn-primary" onclick="go('home')">Sign In</button>
+          <div class="divider">OR</div>
+          <button class="btn-secondary">Continue with Google</button>
+          <p class="muted" style="text-align:center;margin-top:20px;font-size:11.5px;">By continuing you agree to Kairos's Terms & Privacy Policy.</p>
+        </div>
+      </section>
+
+      <!-- HOME / DAILY RITUAL -->
+      <section class="screen" data-screen="home">
+        <div class="status-row"><span>9:41</span><span>KAIROS</span></div>
+        <div class="screen-scroll">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div><div class="muted" style="font-size:12px;">Good evening</div><div class="h2">Umesh</div></div>
+            <div class="pill">🔥 14-day streak</div>
+          </div>
+
+          <div class="card" style="margin-top:20px;display:flex;flex-direction:column;align-items:center;padding:26px 16px;">
+            <div class="eyebrow">Today's Ritual · Resets in 07:14:02</div>
+            <div class="ring-wrap" style="margin:18px 0;">
+              <svg width="170" height="170" viewBox="0 0 170 170">
+                <circle cx="85" cy="85" r="74" fill="none" stroke="var(--surface-2)" stroke-width="10"/>
+                <circle cx="85" cy="85" r="74" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round" stroke-dasharray="465" stroke-dashoffset="120" style="transform:rotate(-90deg);transform-origin:85px 85px;"/>
+              </svg>
+              <div class="ring-center">
+                <div class="muted" style="font-size:11px;">SYSTEM DESIGN</div>
+                <div class="big" style="font-size:15px;margin-top:4px;">Design a Rate Limiter</div>
+              </div>
+            </div>
+            <button class="btn-primary" onclick="go('answer')">Start Today's Challenge</button>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:14px;">
+            <div class="card" style="flex:1;text-align:center;">
+              <div class="h2" style="font-family:var(--font-mono);">82%</div>
+              <div class="muted" style="font-size:11px;">avg score</div>
+            </div>
+            <div class="card" style="flex:1;text-align:center;">
+              <div class="h2" style="font-family:var(--font-mono);">Top 12%</div>
+              <div class="muted" style="font-size:11px;">this week</div>
+            </div>
+            <div class="card" style="flex:1;text-align:center;">
+              <div class="h2" style="font-family:var(--font-mono);">2,481</div>
+              <div class="muted" style="font-size:11px;">solving now</div>
+            </div>
+          </div>
+
+          <div class="group-label">Yesterday's Recap</div>
+          <div class="card" style="display:flex;justify-content:space-between;align-items:center;">
+            <div><div style="font-weight:600;font-size:13.5px;">Database Indexing Trade-offs</div><div class="muted" style="font-size:11.5px;">DBMS · Answered</div></div>
+            <div class="score-chip" style="background:var(--accent-ink);color:var(--accent);">91</div>
+          </div>
+        </div>
+        <div class="bottomnav">
+          <button class="navitem active" onclick="go('home')">🏠<span>Home</span></button>
+          <button class="navitem" onclick="go('practice')">🎯<span>Practice</span></button>
+          <button class="navitem" onclick="go('progress')">📈<span>Progress</span></button>
+          <button class="navitem" onclick="go('history')">🕘<span>History</span></button>
+          <button class="navitem" onclick="go('profile')">👤<span>Profile</span></button>
+        </div>
+      </section>
+
+      <!-- PRACTICE HUB -->
+      <section class="screen" data-screen="practice">
+        <div class="status-row"><span>9:41</span><span>KAIROS</span></div>
+        <div class="screen-scroll">
+          <div class="eyebrow">Practice Hub</div>
+          <h1 class="h1" style="margin:6px 0 14px;">19 categories.</h1>
+          <input placeholder="Search categories..." style="width:100%;padding:12px 14px;border-radius:var(--radius-sm);border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:13.5px;">
+
+          <div class="group-label">Core</div>
+          <div class="cat-grid" id="catCore"></div>
+          <div class="group-label">Full Stack</div>
+          <div class="cat-grid" id="catFS"></div>
+          <div class="group-label">Modern Tech</div>
+          <div class="cat-grid" id="catModern"></div>
+          <div class="group-label">Professional</div>
+          <div class="cat-grid" id="catPro"></div>
+        </div>
+        <div class="bottomnav">
+          <button class="navitem" onclick="go('home')">🏠<span>Home</span></button>
+          <button class="navitem active" onclick="go('practice')">🎯<span>Practice</span></button>
+          <button class="navitem" onclick="go('progress')">📈<span>Progress</span></button>
+          <button class="navitem" onclick="go('history')">🕘<span>History</span></button>
+          <button class="navitem" onclick="go('profile')">👤<span>Profile</span></button>
+        </div>
+      </section>
+
+      <!-- ANSWER -->
+      <section class="screen" data-screen="answer">
+        <div class="status-row"><span>9:41</span><span>KAIROS</span></div>
+        <div class="screen-scroll">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div class="pill">SYSTEM DESIGN</div>
+            <div class="pill" style="font-family:var(--font-mono);">⏱ 18:42</div>
+          </div>
+          <h1 class="h1" style="margin:16px 0 8px;font-size:21px;">Design a Rate Limiter for a public API.</h1>
+          <p class="muted">Cover the algorithm you'd choose, how state is stored across distributed nodes, and how you'd handle burst traffic gracefully.</p>
+
+          <div class="group-label">Your Answer</div>
+          <textarea placeholder="Start typing your answer, or use voice input..." style="width:100%;min-height:220px;padding:14px;border-radius:var(--radius-md);border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:13.5px;font-family:var(--font-body);resize:none;"></textarea>
+          <div style="display:flex;justify-content:space-between;margin-top:8px;">
+            <span class="muted" style="font-size:11px;">0 / 2000 characters</span>
+            <span class="muted" style="font-size:11px;">🎙 Voice input</span>
+          </div>
+        </div>
+        <div style="padding:16px 20px;border-top:1px solid var(--line);">
+          <button class="btn-primary" onclick="go('evaluation')">Submit for Evaluation</button>
+        </div>
+      </section>
+
+      <!-- EVALUATION -->
+      <section class="screen" data-screen="evaluation">
+        <div class="status-row"><span>9:41</span><span>KAIROS</span></div>
+        <div class="screen-scroll">
+          <div class="eyebrow">AI Evaluation</div>
+          <div style="display:flex;flex-direction:column;align-items:center;margin:16px 0 6px;">
+            <div class="ring-wrap">
+              <svg width="130" height="130" viewBox="0 0 130 130">
+                <circle cx="65" cy="65" r="55" fill="none" stroke="var(--surface-2)" stroke-width="9"/>
+                <circle cx="65" cy="65" r="55" fill="none" stroke="var(--accent2)" stroke-width="9" stroke-linecap="round" stroke-dasharray="345" stroke-dashoffset="62" style="transform:rotate(-90deg);transform-origin:65px 65px;"/>
+              </svg>
+              <div class="ring-center"><div class="big" style="font-size:26px;">82</div><div class="muted" style="font-size:10px;">/ 100</div></div>
+            </div>
+            <div class="muted" style="margin-top:8px;">Strong grasp of trade-offs, thin on distributed state.</div>
+          </div>
+
+          <div class="card" style="margin-top:10px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-size:13px;font-weight:600;">Technical Accuracy</span><span class="muted" style="font-family:var(--font-mono);">88</span></div>
+            <div style="height:6px;background:var(--surface-2);border-radius:4px;"><div style="height:6px;width:88%;background:var(--accent2);border-radius:4px;"></div></div>
+
+            <div style="display:flex;justify-content:space-between;margin:14px 0 6px;"><span style="font-size:13px;font-weight:600;">Clarity</span><span class="muted" style="font-family:var(--font-mono);">80</span></div>
+            <div style="height:6px;background:var(--surface-2);border-radius:4px;"><div style="height:6px;width:80%;background:var(--accent2);border-radius:4px;"></div></div>
+
+            <div style="display:flex;justify-content:space-between;margin:14px 0 6px;"><span style="font-size:13px;font-weight:600;">Trade-offs</span><span class="muted" style="font-family:var(--font-mono);">68</span></div>
+            <div style="height:6px;background:var(--surface-2);border-radius:4px;"><div style="height:6px;width:68%;background:var(--danger);border-radius:4px;"></div></div>
+          </div>
+
+          <div class="group-label">Model Answer</div>
+          <div class="card">
+            <p class="muted">Token-bucket at the edge with a shared Redis counter per client key, replenished on a fixed interval, and a sliding-window fallback for burst smoothing across nodes...</p>
+            <div style="margin-top:10px;color:var(--accent2);font-size:12.5px;font-weight:600;cursor:pointer;">Read full "Perfect Answer" →</div>
+          </div>
+        </div>
+        <div style="padding:16px 20px;border-top:1px solid var(--line);display:flex;gap:10px;">
+          <button class="btn-secondary" onclick="go('home')">Back to Ritual</button>
+          <button class="btn-primary" onclick="go('history')">View History</button>
+        </div>
+      </section>
+
+      <!-- PROGRESS -->
+      <section class="screen" data-screen="progress">
+        <div class="status-row"><span>9:41</span><span>KAIROS</span></div>
+        <div class="screen-scroll">
+          <div class="eyebrow">Progress & Analytics</div>
+          <h1 class="h1" style="margin:6px 0 16px;">You're on a 14-day arc.</h1>
+
+          <div class="card">
+            <div class="h2" style="font-size:14px;margin-bottom:8px;">Consistency</div>
+            <div class="heatmap" id="heatmap"></div>
+            <div class="muted" style="font-size:10.5px;margin-top:8px;">Last 33 days · darker = higher score</div>
+          </div>
+
+          <div class="group-label">Skill Map</div>
+          <div class="card" style="display:flex;justify-content:center;">
+            <svg width="220" height="200" viewBox="0 0 220 200">
+              <polygon points="110,20 190,75 165,170 55,170 30,75" fill="none" stroke="var(--line)"/>
+              <polygon points="110,55 160,90 145,150 75,150 60,90" fill="none" stroke="var(--line)"/>
+              <polygon points="110,35 172,80 152,158 68,158 48,80" fill="color-mix(in srgb, var(--accent2) 22%, transparent)" stroke="var(--accent2)" stroke-width="2"/>
+              <text x="110" y="12" font-size="9" fill="var(--text-dim)" text-anchor="middle" font-family="IBM Plex Mono">DSA</text>
+              <text x="200" y="78" font-size="9" fill="var(--text-dim)" font-family="IBM Plex Mono">SYS DSN</text>
+              <text x="170" y="182" font-size="9" fill="var(--text-dim)" font-family="IBM Plex Mono">DBMS</text>
+              <text x="30" y="182" font-size="9" fill="var(--text-dim)" text-anchor="end" font-family="IBM Plex Mono">OS</text>
+              <text x="4" y="78" font-size="9" fill="var(--text-dim)" font-family="IBM Plex Mono">NET</text>
+            </svg>
+          </div>
+
+          <div style="display:flex;gap:10px;margin-top:14px;">
+            <div class="card" style="flex:1;text-align:center;"><div class="h2" style="font-family:var(--font-mono);">146</div><div class="muted" style="font-size:11px;">answered</div></div>
+            <div class="card" style="flex:1;text-align:center;"><div class="h2" style="font-family:var(--font-mono);">79%</div><div class="muted" style="font-size:11px;">avg score</div></div>
+          </div>
+        </div>
+        <div class="bottomnav">
+          <button class="navitem" onclick="go('home')">🏠<span>Home</span></button>
+          <button class="navitem" onclick="go('practice')">🎯<span>Practice</span></button>
+          <button class="navitem active" onclick="go('progress')">📈<span>Progress</span></button>
+          <button class="navitem" onclick="go('history')">🕘<span>History</span></button>
+          <button class="navitem" onclick="go('profile')">👤<span>Profile</span></button>
+        </div>
+      </section>
+
+      <!-- HISTORY -->
+      <section class="screen" data-screen="history">
+        <div class="status-row"><span>9:41</span><span>KAIROS</span></div>
+        <div class="screen-scroll">
+          <div class="eyebrow">History</div>
+          <h1 class="h1" style="margin:6px 0 16px;">Past answers.</h1>
+          <div class="card" id="histList"></div>
+        </div>
+        <div class="bottomnav">
+          <button class="navitem" onclick="go('home')">🏠<span>Home</span></button>
+          <button class="navitem" onclick="go('practice')">🎯<span>Practice</span></button>
+          <button class="navitem" onclick="go('progress')">📈<span>Progress</span></button>
+          <button class="navitem active" onclick="go('history')">🕘<span>History</span></button>
+          <button class="navitem" onclick="go('profile')">👤<span>Profile</span></button>
+        </div>
+      </section>
+
+      <!-- PROFILE -->
+      <section class="screen" data-screen="profile">
+        <div class="status-row"><span>9:41</span><span>KAIROS</span></div>
+        <div class="screen-scroll">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+            <div class="placeholder-art" style="width:64px;height:64px;border-radius:16px;flex-shrink:0;"><span>PIC</span></div>
+            <div><div class="h2">Umesh Chandra</div><div class="muted" style="font-size:12px;">umesh@kairos.dev · Joined Mar 2026</div></div>
+          </div>
+          <div style="display:flex;gap:10px;margin-bottom:20px;">
+            <div class="card" style="flex:1;text-align:center;"><div class="h2" style="font-family:var(--font-mono);">14</div><div class="muted" style="font-size:11px;">streak</div></div>
+            <div class="card" style="flex:1;text-align:center;"><div class="h2" style="font-family:var(--font-mono);">146</div><div class="muted" style="font-size:11px;">answered</div></div>
+            <div class="card" style="flex:1;text-align:center;"><div class="h2" style="font-family:var(--font-mono);">82%</div><div class="muted" style="font-size:11px;">avg score</div></div>
+          </div>
+
+          <div class="group-label">Preferences</div>
+          <div class="card">
+            <div class="settings-row"><span>Appearance</span><span class="muted">Dark</span></div>
+            <div class="settings-row"><span>Daily reminder</span><span class="muted">9:00 PM</span></div>
+            <div class="settings-row"><span>Notifications</span><span class="muted">On</span></div>
+          </div>
+          <div class="group-label">Account</div>
+          <div class="card">
+            <div class="settings-row"><span>Edit profile</span><span class="muted">›</span></div>
+            <div class="settings-row"><span>Subscription</span><span class="muted">Free ›</span></div>
+            <div class="settings-row"><span style="color:var(--danger);">Log out</span><span class="muted">›</span></div>
+          </div>
+        </div>
+        <div class="bottomnav">
+          <button class="navitem" onclick="go('home')">🏠<span>Home</span></button>
+          <button class="navitem" onclick="go('practice')">🎯<span>Practice</span></button>
+          <button class="navitem" onclick="go('progress')">📈<span>Progress</span></button>
+          <button class="navitem" onclick="go('history')">🕘<span>History</span></button>
+          <button class="navitem active" onclick="go('profile')">👤<span>Profile</span></button>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+<footer class="note">Kairos · mobile prototype · signature "moment ring" motif marks time-based state across Home, Evaluation & Progress</footer>
+
+<script>
+const html = document.documentElement;
+
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelector('[data-screen="'+id+'"]').classList.add('active');
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('active', b.dataset.target===id));
+}
+document.querySelectorAll('#tabs button').forEach(b=> b.addEventListener('click', ()=>go(b.dataset.target)));
+
+document.querySelectorAll('#fidelityGroup button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    html.setAttribute('data-fidelity', b.dataset.fid);
+    document.querySelectorAll('#fidelityGroup button').forEach(x=>x.classList.toggle('active', x===b));
+  });
+});
+document.querySelectorAll('#themeGroup button').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    html.setAttribute('data-theme', b.dataset.theme);
+    document.querySelectorAll('#themeGroup button').forEach(x=>x.classList.toggle('active', x===b));
+  });
+});
+
+// categories
+const groups = {
+  catCore: ["DSA","OS","DBMS","Networks","OOP","System Design"],
+  catFS: ["Frontend","Backend","Full Stack"],
+  catModern: ["Cloud","Security","DevOps","Mobile","Machine Learning","Testing/QA"],
+  catPro: ["HR","Agile","Product Mgmt","Behavioral"]
+};
+Object.entries(groups).forEach(([id, items])=>{
+  const el = document.getElementById(id);
+  el.innerHTML = items.map(name => `
+    <div class="cat-card" onclick="go('answer')">
+      <div class="top">
+        <div class="cat-badge">${name.slice(0,2).toUpperCase()}</div>
+        <span class="muted" style="font-size:10px;">42 Qs</span>
+      </div>
+      <div style="font-weight:600;font-size:13px;">${name}</div>
+    </div>`).join('');
+});
+
+// history list
+const hist = [
+  ["Design a Rate Limiter","System Design",82,"Today"],
+  ["Database Indexing Trade-offs","DBMS",91,"Yesterday"],
+  ["Explain the CAP theorem","System Design",75,"2 days ago"],
+  ["Implement LRU Cache","DSA",88,"3 days ago"],
+  ["REST vs GraphQL trade-offs","Backend",69,"4 days ago"],
+];
+document.getElementById('histList').innerHTML = hist.map(([t,c,s,d])=>`
+  <div class="hist-row">
+    <div class="score-chip" style="background:var(--accent-ink);color:${s>=80?'var(--accent2)':'var(--accent)'};">${s}</div>
+    <div style="flex:1;">
+      <div style="font-weight:600;font-size:13px;">${t}</div>
+      <div class="muted" style="font-size:11px;">${c} · ${d}</div>
+    </div>
+  </div>`).join('');
+
+// heatmap
+const hm = document.getElementById('heatmap');
+for(let i=0;i<33;i++){
+  const v = Math.random();
+  const op = v>0.8?1:v>0.6?0.75:v>0.4?0.5:v>0.2?0.28:0.12;
+  hm.innerHTML += `<div style="background:color-mix(in srgb, var(--accent2) ${op*100}%, var(--surface-2));"></div>`;
+}
+
+// onboarding ring
+document.getElementById('onbRing').innerHTML = `
+  <circle cx="70" cy="70" r="58" fill="none" stroke="var(--line)" stroke-width="8"/>
+  <circle cx="70" cy="70" r="58" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="365" stroke-dashoffset="90" style="transform:rotate(-90deg);transform-origin:70px 70px;"/>
+`;
+</script>
+</body>
+</html>

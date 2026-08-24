@@ -94,7 +94,7 @@ export function WebPushCard() {
     <div className="card">
       <h2 className="card-title">Browser notifications</h2>
       {status === "unconfigured" ? (
-        <p className="muted">Browser push is not enabled on the server yet.</p>
+        <p className="muted">Push notifications aren't configured on this deployment.</p>
       ) : status === "denied" ? (
         <>
           <p className="muted">Notifications are blocked. Allow them in your browser's site settings, then try again.</p>

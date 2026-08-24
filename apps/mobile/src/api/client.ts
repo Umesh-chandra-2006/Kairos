@@ -31,7 +31,19 @@ export class ApiError extends Error {
   }
 }
 
-export const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:4000";
+/** Production server the beta app points at. Override via EXPO_PUBLIC_API_URL (build-time) or the Settings screen (runtime, persisted). */
+export const DEFAULT_API_URL = "https://kairos.duckdns.org";
+export let API_URL = process.env.EXPO_PUBLIC_API_URL ?? DEFAULT_API_URL;
+
+/** Runtime override (persisted in SecureStore). Takes effect for all subsequent requests. */
+export function setApiUrl(url: string): void {
+  API_URL = url.replace(/\/+$/, "");
+}
+
+/** Back to the baked-in default (build-time EXPO_PUBLIC_API_URL wins). */
+export function resetApiUrl(): void {
+  API_URL = process.env.EXPO_PUBLIC_API_URL ?? DEFAULT_API_URL;
+}
 
 export interface AuthResponse {
   accessToken: string;
@@ -270,10 +282,12 @@ export function connectAnswerStream(
           streak: data.streak ? (data.streak as { current: number; longest: number }) : null,
         });
         es.close();
+        es.removeAllEventListeners();
         break;
       case "error":
         handlers.onError?.(String(data.message ?? "Evaluation failed"));
         es.close();
+        es.removeAllEventListeners();
         break;
     }
   });
@@ -282,6 +296,7 @@ export function connectAnswerStream(
     const msg = "type" in event && event.type === "error" && "message" in event ? event.message : "Connection to evaluation stream lost";
     handlers.onError?.(String(msg));
     es.close();
+    es.removeAllEventListeners();
   });
 
   return () => es.close();

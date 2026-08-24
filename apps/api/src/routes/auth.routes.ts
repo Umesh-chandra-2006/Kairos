@@ -171,3 +171,34 @@ authRouter.get(
     res.json({ user: toPublicUser(user) });
   }),
 );
+
+/**
+ * Session restore for app boot. Unlike /me (which requires an access token)
+ * and /refresh (which 401s without a token), this endpoint ALWAYS returns
+ * 200: it restores the session from the HttpOnly refresh cookie when present,
+ * otherwise it reports { user: null }. The web client calls this on page load
+ * so that a fresh load never triggers console noise from a 401.
+ */
+authRouter.get(
+  "/session",
+  asyncHandler(async (req, res) => {
+    const db = getDb();
+    const token = resolveRefreshToken(req);
+    if (!token) {
+      res.json({ user: null });
+      return;
+    }
+    try {
+      const result = await authService.refresh(db, token);
+      setRefreshCookie(res, result.refreshToken);
+      res.json({
+        user: result.user,
+        accessToken: result.accessToken,
+        accessTokenExpiresIn: result.accessTokenExpiresIn,
+      });
+    } catch {
+      clearRefreshCookie(res);
+      res.json({ user: null });
+    }
+  }),
+);

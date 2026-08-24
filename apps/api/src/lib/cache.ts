@@ -30,7 +30,14 @@ async function ready(c: Redis): Promise<boolean> {
       return false;
     }
   }
-  return true;
+  if ((c.status as string) === "ready") return true;
+  // The client may have just begun connecting (lazy init) and ioredis rejects
+  // a second connect() while status is "connecting". Wait for it to reach ready.
+  const deadline = Date.now() + 3_000;
+  while ((c.status as string) !== "ready" && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return (c.status as string) === "ready";
 }
 
 async function run<T>(fn: (c: Redis) => Promise<T>): Promise<T | null> {
