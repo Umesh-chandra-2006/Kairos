@@ -20,6 +20,7 @@ import {
   type Category,
   type Difficulty,
 } from "@kairos/shared";
+import { FEATURE_FLAGS } from "@kairos/shared";
 
 /**
  * Status column values for `answers`. V1 statuses are retained for dual-read
@@ -359,3 +360,29 @@ export const evaluationVersions = mysqlTable(
 
 export type EvaluationVersion = typeof evaluationVersions.$inferSelect;
 export type InsertEvaluationVersion = typeof evaluationVersions.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// feature_flags — data-driven enablement per env + college (build-plan §0.5)
+// `collegeId = NULL` rows are the environment-wide default; a college-specific
+// row overrides it. Flags never gate V1 flows.
+// ---------------------------------------------------------------------------
+export const NODE_ENV_ENUM = ["development", "test", "production"] as const;
+
+export const featureFlags = mysqlTable(
+  "feature_flags",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    key: mysqlEnum("key", FEATURE_FLAGS).notNull(),
+    envScope: mysqlEnum("envScope", NODE_ENV_ENUM).notNull(),
+    collegeId: varchar("collegeId", { length: 64 }),
+    enabled: boolean("enabled").notNull(),
+    rolloutPercent: int("rolloutPercent").default(100).notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("feature_flags_scope_idx").on(t.key, t.envScope, t.collegeId),
+  ],
+);
+
+export type FeatureFlagRow = typeof featureFlags.$inferSelect;
+export type InsertFeatureFlag = typeof featureFlags.$inferInsert;

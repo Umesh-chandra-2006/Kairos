@@ -156,6 +156,22 @@ export const ERROR_CODES = {
 } as const;
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
 
+/**
+ * V2 feature flags (build-plan §0.5). All default to false; enablement is
+ * data-driven per environment and optionally per college.
+ */
+export const FEATURE_FLAGS = [
+  "voice_v2",
+  "new_evaluator",
+  "delivery_metrics",
+  "adaptive_followup",
+  "skill_engine",
+  "adaptive_question_selection",
+  "tpo_dashboard",
+  "whatsapp",
+] as const;
+export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
+
 export const ANSWER_MIN_LENGTH = 20;
 export const ANSWER_MAX_LENGTH = 10_000;
 
