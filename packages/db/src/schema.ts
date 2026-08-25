@@ -12,6 +12,7 @@ import {
 } from "drizzle-orm/mysql-core";
 import {
   ANSWER_STATUSES,
+  BANDS,
   CATEGORIES,
   DIFFICULTIES,
   SKILL_LEVELS,
@@ -19,6 +20,20 @@ import {
   type Category,
   type Difficulty,
 } from "@kairos/shared";
+
+/**
+ * Status column values for `answers`. V1 statuses are retained for dual-read
+ * compatibility; V2 submission-lifecycle values are appended (build-plan §0.3).
+ * New writes must use SUBMISSION_STATUSES values only.
+ */
+export const ANSWER_STATUS_DB_ENUM = [
+  ...ANSWER_STATUSES,
+  "created",
+  "queued",
+  "processing",
+  "cancelled",
+] as const;
+export type AnswerStatusDb = (typeof ANSWER_STATUS_DB_ENUM)[number];
 
 export const USER_ROLE_ENUM = ["user", "admin"] as const;
 export type UserRoleDb = (typeof USER_ROLE_ENUM)[number];
@@ -156,7 +171,10 @@ export const answers = mysqlTable(
     score: int("score"),
     feedback: text("feedback"),
     modelAnswer: text("modelAnswer"),
-    status: mysqlEnum("status", ANSWER_STATUSES).default("pending").notNull(),
+    status: mysqlEnum("status", ANSWER_STATUS_DB_ENUM).default("pending").notNull(),
+    // Client-supplied idempotency key for practice submissions; daily answers
+    // keep their natural (userId, dailyKey) uniqueness. NULL never collides.
+    idempotencyKey: varchar("idempotencyKey", { length: 64 }),
     errorMessage: text("errorMessage"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -165,6 +183,7 @@ export const answers = mysqlTable(
     // NULL dailyKey values (practice answers) never collide; daily answers are
     // unique per user per day.
     uniqueIndex("answers_user_dailykey_idx").on(t.userId, t.dailyKey),
+    uniqueIndex("answers_user_idem_idx").on(t.userId, t.idempotencyKey),
     index("answers_user_created_idx").on(t.userId, t.createdAt),
     index("answers_question_idx").on(t.questionId),
   ],
@@ -308,3 +327,35 @@ export const notificationOutbox = mysqlTable(
 
 export type NotificationOutbox = typeof notificationOutbox.$inferSelect;
 export type InsertNotificationOutbox = typeof notificationOutbox.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// evaluation_versions — contract-versioned V2 evaluations (build-plan §6, §0.3)
+// One row per evaluation run; `result` is the canonical EvaluationContract
+// payload. Legacy score/feedback columns on `answers` remain the V1 projection.
+// ---------------------------------------------------------------------------
+export const evaluationVersions = mysqlTable(
+  "evaluation_versions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    answerId: int("answerId")
+      .notNull()
+      .references(() => answers.id, { onDelete: "cascade" }),
+    contractVersion: int("contractVersion").notNull(),
+    evaluatorVersion: varchar("evaluatorVersion", { length: 64 }).notNull(),
+    promptVersion: varchar("promptVersion", { length: 64 }).notNull(),
+    rubricVersion: varchar("rubricVersion", { length: 64 }).notNull(),
+    provider: varchar("provider", { length: 32 }).notNull(),
+    modelVersion: varchar("modelVersion", { length: 128 }).notNull(),
+    overallBand: mysqlEnum("overallBand", BANDS).notNull(),
+    languageBlocked: boolean("languageBlocked").default(false).notNull(),
+    result: json("result").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [
+    index("evaluation_versions_answer_idx").on(t.answerId),
+    index("evaluation_versions_answer_version_idx").on(t.answerId, t.contractVersion),
+  ],
+);
+
+export type EvaluationVersion = typeof evaluationVersions.$inferSelect;
+export type InsertEvaluationVersion = typeof evaluationVersions.$inferInsert;
