@@ -32,3 +32,4 @@ Thumbs.db
 # Expo
 .expo/
 dist-check/
+.data/

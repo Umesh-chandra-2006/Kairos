@@ -177,6 +177,13 @@ export const answers = mysqlTable(
     // Client-supplied idempotency key for practice submissions; daily answers
     // keep their natural (userId, dailyKey) uniqueness. NULL never collides.
     idempotencyKey: varchar("idempotencyKey", { length: 64 }),
+    // --- V2 voice submission columns (build-plan Wave 1) --------------------
+    /** Storage key of the uploaded audio (AudioStorage abstraction). */
+    audioKey: varchar("audioKey", { length: 255 }),
+    /** ASR transcript — the text the evaluator actually graded. */
+    transcript: text("transcript"),
+    durationMs: int("durationMs"),
+    languageBlocked: boolean("languageBlocked").default(false).notNull(),
     errorMessage: text("errorMessage"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

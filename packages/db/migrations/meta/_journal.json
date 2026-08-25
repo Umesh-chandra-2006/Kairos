@@ -43,6 +43,13 @@
       "when": 1787654282512,
       "tag": "0005_reflective_bloodstrike",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1787655386652,
+      "tag": "0006_smart_chat",
+      "breakpoints": true
     }
   ]
 }

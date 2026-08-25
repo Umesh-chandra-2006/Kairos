@@ -19,7 +19,12 @@ const baseReq = {
     "An index is a data structure, usually a b-tree, that lets the database find rows without scanning the whole table. The write penalty trade-off matters.",
 };
 
-function fakeEnv(partial: { AI_PROVIDER?: string; ASR_PROVIDER?: string; OPENROUTER_API_KEY?: string }): Env {
+function fakeEnv(partial: {
+  NODE_ENV?: string;
+  AI_PROVIDER?: string;
+  ASR_PROVIDER?: string;
+  OPENROUTER_API_KEY?: string;
+}): Env {
   return partial as unknown as Env;
 }
 
@@ -121,9 +126,12 @@ describe("MockASRProvider", () => {
     expect(res.provider).toBe("mock-asr");
   });
 
-  it("factory resolves auto and mock to MockASRProvider", () => {
-    expect(getASRProvider(undefined, fakeEnv({}))).toBeInstanceOf(MockASRProvider);
-    expect(getASRProvider("mock")).toBeInstanceOf(MockASRProvider);
-    expect(() => getASRProvider("groq")).toThrow(/not implemented yet/);
+  it("factory resolves test-env auto and explicit mock to MockASRProvider", async () => {
+    expect(await getASRProvider(undefined, fakeEnv({ NODE_ENV: "test" }))).toBeInstanceOf(MockASRProvider);
+    expect(await getASRProvider("mock")).toBeInstanceOf(MockASRProvider);
+    await expect(getASRProvider("groq", fakeEnv({ NODE_ENV: "development" }))).rejects.toMatchObject({
+      code: ERROR_CODES.AI_UNAVAILABLE,
+    });
+    await expect(getASRProvider("nonsense", fakeEnv({ NODE_ENV: "development" }))).rejects.toThrow(/not implemented yet/);
   });
 });

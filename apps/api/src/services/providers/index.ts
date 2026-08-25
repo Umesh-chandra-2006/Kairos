@@ -2,11 +2,15 @@ import { getEnv, type Env } from "@kairos/config";
 import { AppError } from "../../lib/http";
 import { MockAIProvider, MockASRProvider } from "./mock";
 import { OpenRouterProvider } from "./openrouter";
+import { LocalWhisperProvider } from "./localWhisper";
+import { GroqProvider } from "./groq";
 import type { AIEvalRequest, AIProvider, ASRProvider } from "./types";
 
 export * from "./types";
 export { MockAIProvider, MockASRProvider, type MockASROpts } from "./mock";
 export { OpenRouterProvider } from "./openrouter";
+export { LocalWhisperProvider } from "./localWhisper";
+export { GroqProvider } from "./groq";
 
 /** Preserves V1 semantics when no AI provider is configured. */
 export class UnavailableAIProvider implements AIProvider {
@@ -40,15 +44,35 @@ export function getAIProvider(override?: string, env: Env = getEnv()): AIProvide
 }
 
 /**
- * Phase 0: only the deterministic mock exists; nothing calls ASR yet.
- * Phase 1 replaces "auto" resolution with LocalWhisper → Groq fallback.
+ * ASR selection (build-plan Wave 1): "auto" resolves local faster-whisper →
+ * Groq fallback, mirroring the cost/reliability ladder. In test environments
+ * auto resolves to the deterministic mock so CI needs neither python nor keys.
+ * `probeLocal` lets callers skip the python availability probe.
  */
-export function getASRProvider(override?: string, env: Env = getEnv()): ASRProvider {
+export async function getASRProvider(
+  override?: string,
+  env: Env = getEnv(),
+  opts: { probeLocal?: boolean } = {},
+): Promise<ASRProvider> {
   const choice = override ?? env.ASR_PROVIDER ?? "auto";
+
+  const resolveAuto = async (): Promise<ASRProvider> => {
+    if (env.NODE_ENV === "test") return new MockASRProvider();
+    if (await new LocalWhisperProvider().available()) return new LocalWhisperProvider();
+    if (env.GROQ_API_KEY) return new GroqProvider();
+    throw AppError.aiUnavailable("No speech-to-text provider is configured");
+  };
+
   switch (choice) {
     case "mock":
-    case "auto":
       return new MockASRProvider();
+    case "localwhisper":
+      return new LocalWhisperProvider();
+    case "groq":
+      if (!env.GROQ_API_KEY) throw AppError.aiUnavailable("Groq ASR is not configured");
+      return new GroqProvider();
+    case "auto":
+      return opts.probeLocal === false ? Promise.resolve(new MockASRProvider()) : resolveAuto();
     default:
       throw new Error(`ASR provider "${choice}" is not implemented yet`);
   }
