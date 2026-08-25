@@ -47,6 +47,8 @@ const envSchema = z.object({
   OPENROUTER_FAST_MODEL: z.string().default("meta-llama/llama-3.1-8b-instruct:free"),
   OPENROUTER_TIMEOUT_MS: z.coerce.number().default(30_000),
   OPENROUTER_CACHE_TTL_SEC: z.coerce.number().default(86_400),
+  AI_PROVIDER: z.enum(["auto", "openrouter", "mock"]).default("auto"),
+  ASR_PROVIDER: z.enum(["auto", "localwhisper", "groq", "mock"]).default("auto"),
   LOG_LEVEL: z.string().default("info"),
   WEB_PUSH_PUBLIC_KEY: z.string().optional(),
   WEB_PUSH_PRIVATE_KEY: z.string().optional(),

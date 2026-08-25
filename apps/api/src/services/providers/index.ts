@@ -1,0 +1,55 @@
+import { getEnv, type Env } from "@kairos/config";
+import { AppError } from "../../lib/http";
+import { MockAIProvider, MockASRProvider } from "./mock";
+import { OpenRouterProvider } from "./openrouter";
+import type { AIEvalRequest, AIProvider, ASRProvider } from "./types";
+
+export * from "./types";
+export { MockAIProvider, MockASRProvider, type MockASROpts } from "./mock";
+export { OpenRouterProvider } from "./openrouter";
+
+/** Preserves V1 semantics when no AI provider is configured. */
+export class UnavailableAIProvider implements AIProvider {
+  readonly name = "unavailable";
+  readonly modelVersion = "none";
+
+  async evaluate(_req?: AIEvalRequest): Promise<never> {
+    throw AppError.aiUnavailable("AI evaluation is not configured");
+  }
+}
+
+/**
+ * Provider selection never happens at call sites — only here.
+ * "auto" keeps legacy behavior: OpenRouter when a key exists, otherwise the
+ * unavailable stub that surfaces the same error the worker already handles.
+ */
+export function getAIProvider(override?: string, env: Env = getEnv()): AIProvider {
+  const choice = override ?? env.AI_PROVIDER;
+  switch (choice) {
+    case "mock":
+      return new MockAIProvider();
+    case "openrouter":
+      return new OpenRouterProvider(env.OPENROUTER_API_KEY);
+    case "openai":
+      // Phase 1 adds a native OpenAI provider behind the same interface.
+    default:
+      return env.OPENROUTER_API_KEY
+        ? new OpenRouterProvider(env.OPENROUTER_API_KEY)
+        : new UnavailableAIProvider();
+  }
+}
+
+/**
+ * Phase 0: only the deterministic mock exists; nothing calls ASR yet.
+ * Phase 1 replaces "auto" resolution with LocalWhisper → Groq fallback.
+ */
+export function getASRProvider(override?: string, env: Env = getEnv()): ASRProvider {
+  const choice = override ?? env.ASR_PROVIDER ?? "auto";
+  switch (choice) {
+    case "mock":
+    case "auto":
+      return new MockASRProvider();
+    default:
+      throw new Error(`ASR provider "${choice}" is not implemented yet`);
+  }
+}
