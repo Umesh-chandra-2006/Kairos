@@ -4,7 +4,7 @@ import { MockAIProvider, MockASRProvider } from "./mock";
 import { OpenRouterProvider } from "./openrouter";
 import { LocalWhisperProvider } from "./localWhisper";
 import { GroqProvider } from "./groq";
-import type { AIEvalRequest, AIProvider, ASRProvider } from "./types";
+import type { AIEvalRequest, AIProvider, ASRProvider, ChatJSONProvider } from "./types";
 
 export * from "./types";
 export { MockAIProvider, MockASRProvider, type MockASROpts } from "./mock";
@@ -12,12 +12,19 @@ export { OpenRouterProvider } from "./openrouter";
 export { LocalWhisperProvider } from "./localWhisper";
 export { GroqProvider } from "./groq";
 
+/** Every concrete AI provider serves both V1 grading and V2 JSON completion. */
+export type FullAIProvider = AIProvider & ChatJSONProvider;
+
 /** Preserves V1 semantics when no AI provider is configured. */
-export class UnavailableAIProvider implements AIProvider {
+export class UnavailableAIProvider implements FullAIProvider {
   readonly name = "unavailable";
   readonly modelVersion = "none";
 
   async evaluate(_req?: AIEvalRequest): Promise<never> {
+    throw AppError.aiUnavailable("AI evaluation is not configured");
+  }
+
+  async completeJSON(): Promise<never> {
     throw AppError.aiUnavailable("AI evaluation is not configured");
   }
 }
@@ -27,7 +34,7 @@ export class UnavailableAIProvider implements AIProvider {
  * "auto" keeps legacy behavior: OpenRouter when a key exists, otherwise the
  * unavailable stub that surfaces the same error the worker already handles.
  */
-export function getAIProvider(override?: string, env: Env = getEnv()): AIProvider {
+export function getAIProvider(override?: string, env: Env = getEnv()): FullAIProvider {
   const choice = override ?? env.AI_PROVIDER;
   switch (choice) {
     case "mock":

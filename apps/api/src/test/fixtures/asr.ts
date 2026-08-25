@@ -1,4 +1,4 @@
-import type { ASRWord } from "../services/providers/types";
+import type { ASRWord } from "../../services/providers/types";
 
 /** Deterministic ASR word fixtures for delivery-metric and evaluator tests. */
 export function words(startMs: number, per: number, text: string[]): ASRWord[] {

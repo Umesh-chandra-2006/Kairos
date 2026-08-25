@@ -7,6 +7,7 @@ import { leaderboardRouter } from "./leaderboard.routes";
 import { notificationsRouter } from "./notifications.routes";
 import { questionsRouter } from "./questions.routes";
 import { streaksRouter } from "./streaks.routes";
+import { submissionsRouter } from "./submissions.routes";
 
 export const apiRouter: Router = Router();
 
@@ -18,3 +19,4 @@ apiRouter.use("/streak", streaksRouter);
 apiRouter.use("/leaderboard", leaderboardRouter);
 apiRouter.use("/notifications", notificationsRouter);
 apiRouter.use("/analytics", analyticsRouter);
+apiRouter.use("/submissions", submissionsRouter);

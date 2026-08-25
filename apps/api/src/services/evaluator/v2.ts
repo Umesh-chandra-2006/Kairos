@@ -10,8 +10,10 @@ import {
 import type { DB } from "@kairos/db/client";
 import { answers, evaluationVersions } from "@kairos/db/schema";
 import { eq } from "drizzle-orm";
+import { getEnv } from "@kairos/config";
 import { bandDelivery, computeDeliveryMetrics } from "../delivery";
 import { checkLanguage } from "../language";
+import { MockAIProvider, OpenRouterProvider, type FullAIProvider } from "../providers";
 import type { ASRWord, ChatJSONProvider } from "../providers/types";
 
 export const EVALUATOR_VERSION = "v2-evaluator@1";
@@ -72,6 +74,22 @@ export class EvalModelOutputError extends Error {
     super("Evaluator model returned unusable output");
     this.name = "EvalModelOutputError";
   }
+}
+
+/**
+ * Model resolution for the V2 pipeline (distinct from the V1 text path):
+ * explicit mock > OpenRouter when a key exists > deterministic mock in test
+ * environments > otherwise unavailable. Keeps CI keyless and deterministic
+ * while production always uses the real model.
+ */
+export function getModelForV2(override?: string): FullAIProvider {
+  const env = getEnv();
+  const choice = override ?? env.AI_PROVIDER;
+  if (choice === "mock") return new MockAIProvider();
+  if (env.OPENROUTER_API_KEY) return new OpenRouterProvider(env.OPENROUTER_API_KEY);
+  if (choice === "openrouter") throw new Error("OPENROUTER_API_KEY is required for AI_PROVIDER=openrouter");
+  if (env.NODE_ENV === "test") return new MockAIProvider();
+  throw new Error("No evaluation model is configured");
 }
 
 /** Deterministic structure sub-scores computed from the transcript text only. */
@@ -254,7 +272,7 @@ const DIMENSION_PRIORITY: Record<"content" | "structure" | "delivery", number> =
 // answers so V1 clients keep rendering (build-plan §Wave1 dual-write).
 // ---------------------------------------------------------------------------
 
-const LEGACY_SCORE_BY_BAND: Record<Band, number> = { needs_work: 4, solid: 6, strong: 8 };
+export const LEGACY_SCORE_BY_BAND: Record<Band, number> = { needs_work: 4, solid: 6, strong: 8 };
 
 function legacyFeedback(result: EvaluationResult): string {
   const parts: string[] = [];

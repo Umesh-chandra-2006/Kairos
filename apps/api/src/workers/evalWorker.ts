@@ -7,9 +7,15 @@ import { dateStr } from "../lib/dates";
 import { logger } from "../lib/logger";
 import { logDomainEvent } from "../lib/obs";
 import { getRuntime } from "../queue";
-import { aiService } from "../services/ai.service";
+import type { EvalJobData } from "../queue/types";
+import { getAudioStorage } from "../services/audio/storage";
+import { checkLanguage } from "../services/language";
+import { evaluateV2, persistEvaluation, LEGACY_SCORE_BY_BAND } from "../services/evaluator/v2";
+import { getASRProvider } from "../services/providers";
+import { getModelForV2 } from "../services/evaluator/v2";
 import { notificationService } from "../services/notification.service";
 import { streakService } from "../services/streak.service";
+import { aiService } from "../services/ai.service";
 
 interface ResultSetHeader {
   affectedRows?: number;
@@ -58,6 +64,11 @@ export function registerEvalWorker(): void {
   const { queue, hub } = getRuntime();
 
   void queue.registerWorker(async (job) => {
+    if (job.kind === "voice") return handleVoiceJob(job);
+    return handleTextJob(job);
+  });
+
+  async function handleTextJob(job: EvalJobData): Promise<void> {
     const db = getDb();
     const channel = `eval:${job.userId}:${job.answerId}`;
 
@@ -155,5 +166,104 @@ export function registerEvalWorker(): void {
         .where(and(eq(answers.id, job.answerId), eq(answers.status, "processing")));
       await hub.publish(channel, { type: "error", message });
     }
-  });
+  }
+
+  /**
+   * V2 voice pipeline (build-plan Wave 1):
+   *   queued → transcribe (ASR) → evaluate (contract) → completed
+   * Deterministic delivery metrics come from ASR words; the LLM only judges
+   * content and flow. Results dual-write: evaluation_versions row + legacy
+   * projection columns.
+   */
+  async function handleVoiceJob(job: EvalJobData): Promise<void> {
+    const db = getDb();
+    const channel = `eval:${job.userId}:${job.answerId}`;
+    const startedAt = Date.now();
+
+    if (!(await claimAnswerForEval(db, job.answerId))) {
+      logDomainEvent("eval_claim_skipped", { userId: job.userId, answerId: job.answerId });
+      return;
+    }
+    logDomainEvent("eval_started", { userId: job.userId, answerId: job.answerId, kind: "voice" });
+
+    try {
+      const [answer] = await db.select().from(answers).where(eq(answers.id, job.answerId));
+      if (!answer?.audioKey) {
+        logger.warn({ job }, "voice job: answer or audio missing");
+        return;
+      }
+      const [question] = await db.select().from(questions).where(eq(questions.id, job.questionId));
+      if (!question) throw new Error("Question not found");
+      const [user] = await db.select().from(users).where(eq(users.id, job.userId));
+      const level = user?.profile?.level ?? "intermediate";
+
+      await hub.publish(channel, { type: "voice_status", stage: "transcribing" });
+
+      const audio = await getAudioStorage().get(answer.audioKey);
+      if (!audio) throw new Error("Stored audio not found");
+      const asr = await getASRProvider();
+      const asrResult = await asr.transcribe(audio, "audio/webm");
+
+      const language = checkLanguage(asrResult.transcript);
+      await db
+        .update(answers)
+        .set({
+          transcript: asrResult.transcript,
+          durationMs: asrResult.durationMs,
+          languageBlocked: !language.suitable,
+        })
+        .where(and(eq(answers.id, job.answerId), eq(answers.status, "processing")));
+
+      await hub.publish(channel, { type: "voice_status", stage: "evaluating" });
+
+      const result = await evaluateV2(
+        {
+          answerId: job.answerId,
+          questionText: question.text,
+          rubricHints: question.rubricHints,
+          level,
+          transcript: asrResult.transcript,
+          words: asrResult.words,
+          durationMs: asrResult.durationMs,
+        },
+        getModelForV2(),
+      );
+      await persistEvaluation(db, job.answerId, result);
+
+      logDomainEvent("eval_completed", {
+        userId: job.userId,
+        answerId: job.answerId,
+        kind: "voice",
+        durationMs: Date.now() - startedAt,
+        provider: `${asr.name}+${result.versions.provider}`,
+        outcome: `band=${result.overallBand}`,
+      });
+
+      await hub.publish(channel, {
+        type: "voice_done",
+        overallBand: result.overallBand,
+        contentBand: result.content.band,
+        structureBand: result.structure.band,
+        deliveryBand: result.delivery.band,
+        nextAction: { instruction: result.nextAction.instruction, focusDimension: result.nextAction.focusDimension },
+        transcript: asrResult.transcript,
+        score: LEGACY_SCORE_BY_BAND[result.overallBand],
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Voice evaluation failed";
+      logger.error({ err, job }, "voice eval job failed");
+      logDomainEvent("eval_failed", {
+        userId: job.userId,
+        answerId: job.answerId,
+        kind: "voice",
+        durationMs: Date.now() - startedAt,
+        outcome: message.slice(0, 200),
+      });
+      await db
+        .update(answers)
+        .set({ status: "failed", errorMessage: message.slice(0, 1000) })
+        .where(and(eq(answers.id, job.answerId), eq(answers.status, "processing")));
+      await hub.publish(channel, { type: "error", message });
+    }
+  }
 }
