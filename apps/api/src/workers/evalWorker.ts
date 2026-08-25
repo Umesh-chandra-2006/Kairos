@@ -16,6 +16,7 @@ import { getModelForV2 } from "../services/evaluator/v2";
 import { notificationService } from "../services/notification.service";
 import { streakService } from "../services/streak.service";
 import { aiService } from "../services/ai.service";
+import { recordReview } from "../services/spacedRepetition";
 
 interface ResultSetHeader {
   affectedRows?: number;
@@ -124,6 +125,10 @@ export function registerEvalWorker(): void {
       const isPractice = answer.dailyKey === null;
       const streak = isPractice ? null : await streakService.recordActivity(db, job.userId, dateStr());
 
+      void recordReview(db, job.userId, job.questionId, result.score).catch((err) =>
+        logger.warn({ err, userId: job.userId, questionId: job.questionId }, "spaced repetition recordReview failed"),
+      );
+
       logDomainEvent("eval_completed", {
         userId: job.userId,
         answerId: job.answerId,
@@ -229,6 +234,10 @@ export function registerEvalWorker(): void {
         getModelForV2(),
       );
       await persistEvaluation(db, job.answerId, result);
+
+      void recordReview(db, job.userId, job.questionId, LEGACY_SCORE_BY_BAND[result.overallBand]).catch((err) =>
+        logger.warn({ err, userId: job.userId, questionId: job.questionId }, "spaced repetition recordReview failed"),
+      );
 
       logDomainEvent("eval_completed", {
         userId: job.userId,

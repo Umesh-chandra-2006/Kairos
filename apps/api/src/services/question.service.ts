@@ -5,6 +5,9 @@ import type { Question, QuestionFilters } from "@kairos/shared";
 import { dateStr } from "../lib/dates";
 import { AppError } from "../lib/http";
 import { seedFromInts } from "../lib/ids";
+import { getDailyPool } from "./questionCache";
+import { computeSkillProfile, pickAdaptiveQuestion } from "./adaptive";
+import { isEnabled } from "./flags.service";
 
 function toQuestion(q: QuestionRow): Question {
   return {
@@ -20,32 +23,35 @@ function dateSeed(date: string): number {
   return Number(date.replace(/\D/g, ""));
 }
 
-/** All active questions available for the daily challenge (non practice-only). */
-async function loadDailyPool(db: DB): Promise<QuestionRow[]> {
-  return db
-    .select()
-    .from(questions)
-    .where(and(eq(questions.isActive, true), eq(questions.practiceOnly, false)));
-}
-
 /**
  * Deterministic daily challenge: seeded by `date` only so every user sees the
  * exact same high-impact question all day. Core categories only (practice-only
  * questions are excluded from the daily pool).
+ *
+ * When `adaptive_question_selection` is enabled, the per-user adaptive picker
+ * selects a question at the user's skill level instead of the flat date hash.
  */
 async function assignDailyQuestion(db: DB, userId: number, date: string): Promise<QuestionRow> {
-  const all = await loadDailyPool(db);
+  const all = await getDailyPool(db);
   if (all.length === 0) throw AppError.notFound("No questions available yet");
 
-  const categories = [...new Set(all.map((q) => q.category))];
-  const category = categories[seedFromInts(dateSeed(date), 1) % categories.length]!;
-  const pool = all.filter((q) => q.category === category);
-  const question = pool[seedFromInts(dateSeed(date), 2) % pool.length]!;
+  const seed = dateSeed(date);
+  const adaptive = await isEnabled("adaptive_question_selection", { userId, db });
+
+  let question: QuestionRow;
+  if (adaptive) {
+    const profile = await computeSkillProfile(db, userId);
+    question = pickAdaptiveQuestion(all, profile, undefined, seed);
+  } else {
+    const categories = [...new Set(all.map((q) => q.category))];
+    const category = categories[seedFromInts(seed, 1) % categories.length]!;
+    const pool = all.filter((q) => q.category === category);
+    question = pool[seedFromInts(seed, 2) % pool.length]!;
+  }
 
   try {
     await db.insert(dailyAssignments).values({ userId, questionId: question.id, date });
   } catch {
-    // Unique (userId, date) already exists (race); re-read the committed row.
     const [existing] = await db
       .select()
       .from(dailyAssignments)
@@ -107,13 +113,23 @@ export const questionService = {
     };
   },
 
-  /** Random active question for practice mode, optionally filtered by category. */
-  async practice(db: DB, category?: string): Promise<Question> {
+  /**
+   * Active question for practice mode, optionally filtered by category.
+   * When `skill_engine` is enabled, picks at the user's skill level.
+   */
+  async practice(db: DB, category?: string, userId?: number): Promise<Question> {
     const conditions = [eq(questions.isActive, true)];
     if (category) conditions.push(eq(questions.category, category as QuestionRow["category"]));
 
     const rows = await db.select().from(questions).where(and(...conditions));
     if (rows.length === 0) throw AppError.notFound("No questions found for this category");
+
+    const useAdaptive = userId !== undefined && (await isEnabled("skill_engine", { userId, db }));
+    if (useAdaptive && userId !== undefined) {
+      const profile = await computeSkillProfile(db, userId);
+      return toQuestion(pickAdaptiveQuestion(rows, profile, category));
+    }
+
     return toQuestion(rows[Math.floor(Math.random() * rows.length)]!);
   },
 

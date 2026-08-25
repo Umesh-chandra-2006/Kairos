@@ -5,6 +5,7 @@ import {
   json,
   mysqlEnum,
   mysqlTable,
+  real,
   text,
   timestamp,
   uniqueIndex,
@@ -249,6 +250,36 @@ export const dailyAssignments = mysqlTable(
 
 export type DailyAssignment = typeof dailyAssignments.$inferSelect;
 export type InsertDailyAssignment = typeof dailyAssignments.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// user_questions — spaced repetition schedule per user per question
+// ---------------------------------------------------------------------------
+export const userQuestions = mysqlTable(
+  "user_questions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    questionId: int("questionId")
+      .notNull()
+      .references(() => questions.id, { onDelete: "restrict" }),
+    nextReviewAt: varchar("nextReviewAt", { length: 10 }).notNull(),
+    intervalDays: int("intervalDays").default(1).notNull(),
+    easeFactor: real("easeFactor").default(2.5).notNull(),
+    lastReviewedAt: varchar("lastReviewedAt", { length: 10 }),
+    reviewCount: int("reviewCount").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("user_questions_user_question_idx").on(t.userId, t.questionId),
+    index("user_questions_next_review_idx").on(t.userId, t.nextReviewAt),
+  ],
+);
+
+export type UserQuestion = typeof userQuestions.$inferSelect;
+export type InsertUserQuestion = typeof userQuestions.$inferInsert;
 
 // ---------------------------------------------------------------------------
 // push_subscriptions — web-push (endpoint+keys) and Expo push tokens

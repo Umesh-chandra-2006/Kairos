@@ -24,7 +24,7 @@ questionsRouter.get(
   asyncHandler(async (req, res) => {
     const db = getDb();
     const { category } = req.query as unknown as { category?: string };
-    res.json({ question: await questionService.practice(db, category) });
+    res.json({ question: await questionService.practice(db, category, req.userId!) });
   }),
 );
 
