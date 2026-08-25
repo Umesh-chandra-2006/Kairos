@@ -172,6 +172,24 @@ export const FEATURE_FLAGS = [
 ] as const;
 export type FeatureFlag = (typeof FEATURE_FLAGS)[number];
 
+/**
+ * Funnel event names (build-plan §0.6). Clients buffer locally and drain in
+ * batches to POST /api/analytics/events; the server validates against this
+ * set so the funnel stays analyzable.
+ */
+export const FUNNEL_EVENTS = [
+  "app_open",
+  "signup_completed",
+  "daily_question_viewed",
+  "answer_submitted",
+  "eval_completed",
+  "practice_started",
+  "streak_milestone_viewed",
+  "subscription_started",
+  "subscription_converted",
+] as const;
+export type FunnelEvent = (typeof FUNNEL_EVENTS)[number];
+
 export const ANSWER_MIN_LENGTH = 20;
 export const ANSWER_MAX_LENGTH = 10_000;
 

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { answersRouter } from "./answers.routes";
+import { analyticsRouter } from "./analytics.routes";
 import { authRouter } from "./auth.routes";
 import { healthRouter } from "./health.routes";
 import { leaderboardRouter } from "./leaderboard.routes";
@@ -16,3 +17,4 @@ apiRouter.use("/answers", answersRouter);
 apiRouter.use("/streak", streaksRouter);
 apiRouter.use("/leaderboard", leaderboardRouter);
 apiRouter.use("/notifications", notificationsRouter);
+apiRouter.use("/analytics", analyticsRouter);

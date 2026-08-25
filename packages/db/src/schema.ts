@@ -15,12 +15,13 @@ import {
   BANDS,
   CATEGORIES,
   DIFFICULTIES,
+  FEATURE_FLAGS,
+  FUNNEL_EVENTS,
   SKILL_LEVELS,
   USER_ROLES,
   type Category,
   type Difficulty,
 } from "@kairos/shared";
-import { FEATURE_FLAGS } from "@kairos/shared";
 
 /**
  * Status column values for `answers`. V1 statuses are retained for dual-read
@@ -386,3 +387,28 @@ export const featureFlags = mysqlTable(
 
 export type FeatureFlagRow = typeof featureFlags.$inferSelect;
 export type InsertFeatureFlag = typeof featureFlags.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// analytics_events — funnel telemetry (build-plan §0.6)
+// Append-only. Clients batch events and drain them; the server stamps the
+// authenticated userId, so client payloads never claim an identity.
+// ---------------------------------------------------------------------------
+export const analyticsEvents = mysqlTable(
+  "analytics_events",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").references(() => users.id, { onDelete: "set null" }),
+    collegeId: varchar("collegeId", { length: 64 }),
+    name: mysqlEnum("name", FUNNEL_EVENTS).notNull(),
+    props: json("props").$type<Record<string, unknown>>(),
+    clientTs: timestamp("clientTs"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [
+    index("analytics_events_name_created_idx").on(t.name, t.createdAt),
+    index("analytics_events_user_idx").on(t.userId),
+  ],
+);
+
+export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
+export type InsertAnalyticsEvent = typeof analyticsEvents.$inferInsert;
