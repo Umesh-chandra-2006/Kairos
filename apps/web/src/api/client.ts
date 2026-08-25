@@ -100,6 +100,9 @@ async function refreshAccessToken(): Promise<string | null> {
 interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "DELETE";
   body?: unknown;
+  /** Raw payload (e.g. recorded audio blob) sent as-is with `contentType`. */
+  rawBody?: Blob;
+  contentType?: string;
 }
 
 /** Auth endpoints that must never trigger a token refresh (would loop or mask the real error). */
@@ -107,8 +110,12 @@ const NO_REFRESH_PATHS = ["/api/auth/refresh", "/api/auth/login", "/api/auth/reg
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {};
-  if (options.body !== undefined) headers["Content-Type"] = "application/json";
+  if (options.rawBody !== undefined) headers["Content-Type"] = options.contentType ?? "application/octet-stream";
+  else if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+
+  const payload: BodyInit | undefined =
+    options.rawBody !== undefined ? options.rawBody : options.body !== undefined ? JSON.stringify(options.body) : undefined;
 
   let res: Response;
   try {
@@ -116,7 +123,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       method: options.method ?? "GET",
       headers,
       credentials: "include",
-      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      body: payload,
     });
   } catch {
     throw new ApiError(0, "Could not reach the server. Check your connection and try again.");
@@ -131,7 +138,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
           method: options.method ?? "GET",
           headers,
           credentials: "include",
-          body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+          body: payload,
         });
       } catch {
         throw new ApiError(0, "Could not reach the server. Check your connection and try again.");
@@ -217,6 +224,22 @@ export const api = {
       "/api/answers/weekly-summary",
     ),
   answerStreamUrl: (answerId: number) => `/api/answers/${answerId}/stream?token=${encodeURIComponent(accessToken ?? "")}`,
+
+  // ---- Voice submissions (V2) ----
+  flags: () => api.get<{ flags: Record<string, boolean> }>("/api/flags"),
+  submitVoice: (questionId: number, idempotencyKey: string, audio: Blob, clientDurationMs?: number) => {
+    const qs = new URLSearchParams({ questionId: String(questionId), idempotencyKey });
+    if (clientDurationMs && clientDurationMs > 0) qs.set("clientDurationMs", String(Math.round(clientDurationMs)));
+    return request<VoiceSubmitResponse>(`/api/submissions/voice?${qs.toString()}`, {
+      method: "POST",
+      rawBody: audio,
+      contentType: audio.type || "audio/webm",
+    });
+  },
+  voiceEvaluation: (submissionId: number) =>
+    api.get<VoiceEvaluationResponse>(`/api/submissions/${submissionId}/evaluation`),
+  evaluationStreamUrl: (submissionId: number) =>
+    `/api/evaluations/${submissionId}/stream?token=${encodeURIComponent(accessToken ?? "")}`,
 
   // ---- Streak ----
   streak: () => api.get<{ streak: Streak & { rank: number | null } }>("/api/streak"),
@@ -318,6 +341,109 @@ export interface EvalResultData {
   modelAnswer: string;
   streak: { current: number; longest: number } | null;
 }
+
+export interface VoiceSubmitResponse {
+  submissionId: number;
+  status: string;
+  streamUrl: string;
+}
+
+export interface VoiceEvaluationResponse {
+  status: string;
+  transcript: string | null;
+  durationMs: number | null;
+  languageBlocked: boolean;
+  errorMessage: string | null;
+  evaluation: import("@kairos/shared").EvaluationResult | null;
+}
+
+export type VoiceStage = "queued" | "transcribing" | "evaluating";
+
+/** Consumes the V2 submission SSE stream for live stage updates. */
+function connectVoiceStream(
+  submissionId: number,
+  handlers: { onStage?: (stage: VoiceStage) => void; onError?: (message: string) => void },
+): () => void {
+  const es = new EventSource(api.evaluationStreamUrl(submissionId));
+  es.onmessage = (event) => {
+    let data: Record<string, unknown>;
+    try {
+      data = JSON.parse(event.data) as Record<string, unknown>;
+    } catch {
+      return;
+    }
+    if (data.type === "voice_status") handlers.onStage?.(String(data.stage) as VoiceStage);
+    if (data.type === "error") {
+      handlers.onError?.(String(data.message ?? "Evaluation failed"));
+      es.close();
+    }
+  };
+  es.onerror = () => es.close(); /* SSE is optional — polling is authoritative */
+  return () => es.close();
+}
+
+/**
+ * Reliable result delivery for a voice submission. Polls
+ * GET /api/submissions/:id/evaluation as the source of truth and layers the
+ * SSE stage stream on top purely for progress feedback.
+ */
+export function watchVoiceEvaluation(
+  submissionId: number,
+  handlers: {
+    onStage?: (stage: VoiceStage) => void;
+    onDone: (data: VoiceEvaluationResponse) => void;
+    onError: (message: string) => void;
+  },
+): () => void {
+  let cancelled = false;
+  let finished = false;
+  let timer: ReturnType<typeof setInterval> | null = null;
+  let closeSse: (() => void) | null = null;
+
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    closeSse?.();
+    if (timer) clearInterval(timer);
+  };
+
+  const poll = async () => {
+    try {
+      const data = await api.voiceEvaluation(submissionId);
+      if (cancelled || finished) return;
+      if (data.status === "completed") {
+        finish();
+        handlers.onDone(data);
+      } else if (data.status === "failed") {
+        finish();
+        handlers.onError(data.errorMessage ?? "Evaluation failed");
+      }
+    } catch {
+      /* transient network error — keep polling */
+    }
+  };
+
+  timer = setInterval(poll, 1500);
+  void poll();
+
+  closeSse = connectVoiceStream(submissionId, {
+    onStage: (stage) => {
+      if (!cancelled && !finished) handlers.onStage?.(stage);
+    },
+    onError: (message) => {
+      if (!cancelled && !finished) {
+        finish();
+        handlers.onError(message);
+      }
+    },
+  });
+
+  return () => {
+    cancelled = true;
+    finish();
+  };
+}
+
 
 /**
  * Reliable result delivery for a submitted answer. Polls GET /api/answers/:id
