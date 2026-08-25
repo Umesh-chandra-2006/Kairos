@@ -1,6 +1,3 @@
--- Spaced repetition: per-user per-question review schedule.
--- SM-2 algorithm parameters + next review date for due-review queries.
-
 CREATE TABLE `user_questions` (
   `id` int NOT NULL AUTO_INCREMENT,
   `userId` int NOT NULL,
@@ -15,10 +12,8 @@ CREATE TABLE `user_questions` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `user_questions_user_question_idx` (`userId`, `questionId`),
   KEY `user_questions_next_review_idx` (`userId`, `nextReviewAt`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;--> statement-breakpoint
 
--- Backfill: seed initial reviews for all completed daily answers so
--- existing users have a starting review schedule.
 INSERT IGNORE INTO `user_questions` (`userId`, `questionId`, `nextReviewAt`, `intervalDays`, `easeFactor`, `reviewCount`, `createdAt`, `updatedAt`)
 SELECT
   a.`userId`,

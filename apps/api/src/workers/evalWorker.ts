@@ -17,6 +17,8 @@ import { notificationService } from "../services/notification.service";
 import { streakService } from "../services/streak.service";
 import { aiService } from "../services/ai.service";
 import { recordReview } from "../services/spacedRepetition";
+import { getOrGenerateModelAnswer } from "../services/modelAnswer";
+import { generateFollowUp } from "../services/followUp";
 
 interface ResultSetHeader {
   affectedRows?: number;
@@ -128,6 +130,18 @@ export function registerEvalWorker(): void {
       void recordReview(db, job.userId, job.questionId, result.score).catch((err) =>
         logger.warn({ err, userId: job.userId, questionId: job.questionId }, "spaced repetition recordReview failed"),
       );
+
+      // Background: cache model answer for this question+level if missing
+      void getOrGenerateModelAnswer(db, job.questionId, level).catch((err) =>
+        logger.warn({ err, questionId: job.questionId }, "model answer generation failed"),
+      );
+
+      // Background: generate follow-up for daily answers (not practice)
+      if (!isPractice) {
+        void generateFollowUp(db, job.answerId).catch((err) =>
+          logger.warn({ err, answerId: job.answerId }, "follow-up generation failed"),
+        );
+      }
 
       logDomainEvent("eval_completed", {
         userId: job.userId,

@@ -56,6 +56,7 @@ export class MockAIProvider implements AIProvider, ChatJSONProvider {
 
     const contentBand = coverage >= 0.75 ? "strong" : coverage >= 0.4 ? "solid" : "needs_work";
     return {
+      reasoning: `Mock evaluation: ${found.length}/${rubricTokens.length} rubric tokens found in transcript.`,
       contentBand,
       evidenceFound: found.slice(0, 6),
       missingEvidence: missing.slice(0, 6),

@@ -140,3 +140,13 @@ answersRouter.get(
     res.json({ answer: await answerService.getById(db, req.userId!, Number(req.params.id)) });
   }),
 );
+
+answersRouter.get(
+  "/:id/follow-up",
+  asyncHandler(async (req, res) => {
+    const db = getDb();
+    const { getFollowUps } = await import("../services/followUp");
+    const followUps = await getFollowUps(db, Number(req.params.id));
+    res.json({ followUps });
+  }),
+);

@@ -36,3 +36,15 @@ questionsRouter.get(
     res.json(await questionService.list(db, req.query as never));
   }),
 );
+
+questionsRouter.get(
+  "/:id/model-answer",
+  asyncHandler(async (req, res) => {
+    const db = getDb();
+    const { getOrGenerateModelAnswer } = await import("../services/modelAnswer");
+    const { level } = req.query as { level?: string };
+    const validLevel = ["beginner", "intermediate", "advanced"].includes(level ?? "") ? level : "intermediate";
+    const answer = await getOrGenerateModelAnswer(db, Number(req.params.id), validLevel as "beginner" | "intermediate" | "advanced");
+    res.json({ modelAnswer: answer });
+  }),
+);

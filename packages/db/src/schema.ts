@@ -137,6 +137,11 @@ export const questions = mysqlTable(
     difficulty: mysqlEnum("difficulty", DIFFICULTIES).notNull().$type<Difficulty>(),
     text: text("text").notNull(),
     rubricHints: text("rubricHints").notNull(),
+    /** Structured rubric criteria (versioned JSON). null = not yet generated. */
+    rubricJson: json("rubricJson").$type<{
+      version: 1;
+      criteria: { id: string; description: string; weight: number; required: boolean }[];
+    } | null>().$default(() => null),
     isActive: boolean("isActive").default(true).notNull(),
     // Practice-only questions (non-core categories) are excluded from the daily
     // challenge pool but remain reachable via practice mode.
@@ -282,6 +287,53 @@ export type UserQuestion = typeof userQuestions.$inferSelect;
 export type InsertUserQuestion = typeof userQuestions.$inferInsert;
 
 // ---------------------------------------------------------------------------
+// model_answers — pre-generated exemplar answers per question + level
+// ---------------------------------------------------------------------------
+export const modelAnswers = mysqlTable(
+  "model_answers",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    questionId: int("questionId")
+      .notNull()
+      .references(() => questions.id, { onDelete: "restrict" }),
+    level: varchar("level", { length: 20 }).default("intermediate").notNull(),
+    content: text("content").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("model_answers_question_level_idx").on(t.questionId, t.level),
+  ],
+);
+
+export type ModelAnswer = typeof modelAnswers.$inferSelect;
+export type InsertModelAnswer = typeof modelAnswers.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// follow_ups — AI-generated follow-up questions probing weak areas
+// ---------------------------------------------------------------------------
+export const followUps = mysqlTable(
+  "follow_ups",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    parentId: int("parentId")
+      .notNull(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    questionText: text("questionText").notNull(),
+    weakAreas: json("weakAreas").$type<string[]>(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [
+    index("follow_ups_user_idx").on(t.userId),
+    index("follow_ups_parent_idx").on(t.parentId),
+  ],
+);
+
+export type FollowUp = typeof followUps.$inferSelect;
+export type InsertFollowUp = typeof followUps.$inferInsert;
+
+// ---------------------------------------------------------------------------
 // push_subscriptions — web-push (endpoint+keys) and Expo push tokens
 // ---------------------------------------------------------------------------
 export const PUSH_CHANNEL_ENUM = ["web", "expo"] as const;
@@ -338,6 +390,7 @@ export const NOTIFICATION_TYPE_ENUM = [
   "streak_milestone",
   "streak_reminder",
   "weekly_summary",
+  "weekly_digest",
 ] as const;
 export const NOTIFICATION_CHANNEL_ENUM = ["web_push", "expo_push", "email"] as const;
 export const NOTIFICATION_STATUS_ENUM = ["pending", "sent", "failed"] as const;

@@ -26,6 +26,7 @@ export const RUBRIC_VERSION = "rubric@1";
  * measured deterministically and merged around this output (build-plan §6).
  */
 const modelPartSchema = z.object({
+  reasoning: z.string().min(1).max(1500),
   contentBand: z.enum(["needs_work", "solid", "strong"]),
   evidenceFound: z.array(z.string().min(1).max(200)).max(30),
   missingEvidence: z.array(z.string().min(1).max(200)).max(30),
@@ -41,10 +42,18 @@ const SYSTEM_PROMPT = `You are a senior technical interviewer grading a spoken i
 
 You receive the question, the rubric hints a strong answer must cover, the candidate's level, and the verbatim transcript of their spoken response.
 
-Return STRICT JSON only (no markdown fences) with exactly these keys:
+Think step by step:
+1. First, identify each rubric point from the hints.
+2. For each point, check whether the transcript clearly demonstrates it (cite the relevant transcript quote or paraphrase).
+3. Note any factual errors or misconceptions.
+4. Assess the overall organization and structure.
+5. Derive the content band based on rubric coverage.
+
+Then return STRICT JSON only (no markdown fences) with exactly these keys:
 {
+  "reasoning": "your step-by-step analysis of rubric coverage, citing transcript evidence for each point",
   "contentBand": "needs_work" | "solid" | "strong",
-  "evidenceFound": ["rubric points the candidate clearly demonstrated"],
+  "evidenceFound": ["rubric points demonstrated, with brief transcript citation"],
   "missingEvidence": ["rubric points not addressed"],
   "misconceptions": ["factually wrong claims, empty if none"],
   "strengths": ["specific things done well, referencing the transcript"],
@@ -56,7 +65,8 @@ Return STRICT JSON only (no markdown fences) with exactly these keys:
 Rules:
 - Calibrate to the candidate's level: beginners earn credit for clean basics; advanced candidates must cover trade-offs.
 - Do not invent rubric points beyond the hints given.
-- The transcript is spoken language: ignore filler words when judging content.`;
+- The transcript is spoken language: ignore filler words when judging content.
+- In evidenceFound/missingEvidence, reference specific parts of the transcript where possible.`;
 
 export interface EvaluateV2Params {
   answerId: number;
