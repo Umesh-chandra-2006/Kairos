@@ -213,6 +213,8 @@ export const api = {
   submitPractice: (questionId: number, answerText: string) =>
     api.post<{ answerId: number }>("/api/answers/practice", { questionId, answerText }),
   answer: (id: number) => api.get<{ answer: AnswerWithQuestion }>(`/api/answers/${id}`),
+  followUps: (answerId: number) =>
+    api.get<{ followUps: { id: number; questionText: string; weakAreas: string[] }[] }>(`/api/answers/${answerId}/follow-up`),
   history: (cursor?: number, limit = 20) => {
     const qs = new URLSearchParams();
     if (cursor) qs.set("cursor", String(cursor));

@@ -7,6 +7,31 @@ import { VoiceResultView } from "../components/VoiceResultView";
 
 type Mode = "text" | "voice";
 
+interface FollowUp {
+  id: number;
+  questionText: string;
+  weakAreas: string[];
+}
+
+function FollowUpCard({ followUps }: { followUps: FollowUp[] }) {
+  if (followUps.length === 0) return null;
+  const fu = followUps[0]!;
+  return (
+    <div className="card follow-up-card">
+      <div className="question-meta">
+        <span className="tag">Follow-up</span>
+      </div>
+      <h3 className="card-title">Suggested next question</h3>
+      <p>{fu.questionText}</p>
+      {fu.weakAreas.length > 0 && (
+        <p className="muted">
+          Targets: {fu.weakAreas.join(", ")}
+        </p>
+      )}
+    </div>
+  );
+}
+
 type Phase =
   | { name: "pick" }
   | { name: "loading" }
@@ -14,12 +39,13 @@ type Phase =
   | { name: "recording"; question: Question }
   | { name: "submitting"; question: Question; voice: boolean }
   | { name: "evaluating"; question: Question; voice: boolean }
-  | { name: "done"; score: number; feedback: string; modelAnswer: string; question: Question }
+  | { name: "done"; score: number; feedback: string; modelAnswer: string; question: Question; answerId?: number }
   | {
       name: "voiceDone";
       result: EvaluationResult;
       transcript: string | null;
       question: Question;
+      submissionId?: number;
     }
   | { name: "failed"; message: string };
 
@@ -40,6 +66,7 @@ export function Practice() {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [mode, setMode] = useState<Mode>("text");
   const [stage, setStage] = useState<VoiceStage | null>(null);
+  const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [recSeconds, setRecSeconds] = useState(0);
   const closeRef = useRef<(() => void) | null>(null);
   const mediaRef = useRef<MediaRecorder | null>(null);
@@ -53,6 +80,22 @@ export function Practice() {
     stopTimers();
     mediaRef.current?.stream.getTracks().forEach((t) => t.stop());
   }, []);
+
+  useEffect(() => {
+    const answerId =
+      phase.name === "done" ? phase.answerId : undefined;
+    if (!answerId) return;
+    let alive = true;
+    api
+      .followUps(answerId)
+      .then(({ followUps: fups }) => {
+        if (alive) setFollowUps(fups);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [phase.name === "done" ? phase.answerId : undefined]);
 
   useEffect(() => {
     let alive = true;
@@ -80,6 +123,7 @@ export function Practice() {
     setTokens("");
     setStage(null);
     setAnswerText("");
+    setFollowUps([]);
     setPhase({ name: "loading" });
     api
       .practice(cat)
@@ -109,6 +153,7 @@ export function Practice() {
             feedback: data.feedback,
             modelAnswer: data.modelAnswer,
             question,
+            answerId,
           }),
         onError: (message) => setPhase({ name: "failed", message }),
       });
@@ -378,6 +423,7 @@ export function Practice() {
           </button>
         </div>
         <VoiceResultView result={phase.result} transcript={phase.transcript} />
+        <FollowUpCard followUps={followUps} />
       </div>
     );
   }
@@ -399,6 +445,7 @@ export function Practice() {
         question={phase.question}
         isPractice
       />
+      <FollowUpCard followUps={followUps} />
     </div>
   );
 }

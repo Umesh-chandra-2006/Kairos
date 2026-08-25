@@ -249,6 +249,10 @@ body {
   letter-spacing: -0.01em;
 }
 
+.follow-up-card {
+  border-left: 3px solid var(--primary);
+}
+
 .muted {
   color: var(--muted);
   font-size: 14px;
