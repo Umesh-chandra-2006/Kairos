@@ -37,6 +37,23 @@ export interface AIProvider {
 }
 
 // ---------------------------------------------------------------------------
+// Structured JSON completion — the primitive the V2 evaluator consumes.
+// Implementations MUST return parsed JSON or throw; callers never see raw text.
+// ---------------------------------------------------------------------------
+
+export interface ChatJSONRequest {
+  system: string;
+  user: string;
+  temperature?: number;
+}
+
+export interface ChatJSONProvider {
+  readonly name: string;
+  readonly modelVersion: string;
+  completeJSON(req: ChatJSONRequest): Promise<unknown>;
+}
+
+// ---------------------------------------------------------------------------
 // ASR — replaceable speech-to-text infrastructure. Word timestamps are
 // mandatory: deterministic delivery metrics are computed from them.
 // ---------------------------------------------------------------------------

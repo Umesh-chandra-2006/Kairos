@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { getEnv } from "@kairos/config";
 import { AppError } from "../../lib/http";
 import { getRedis, redisReady } from "../../lib/cache";
-import type { AIEvalHooks, AIEvalRequest, AIEvalResult, AIProvider } from "./types";
+import type { AIEvalHooks, AIEvalRequest, AIEvalResult, AIProvider, ChatJSONProvider, ChatJSONRequest } from "./types";
 
 // Extracted verbatim from the former ai.service.ts — behavior-preserving.
 const EVAL_SYSTEM = `You are a senior technical interviewer at a top tech company. You evaluate candidate answers for an AI interview-prep product.
@@ -71,7 +71,7 @@ async function cacheModelAnswer(questionId: number, level: string, answer: strin
   }
 }
 
-export class OpenRouterProvider implements AIProvider {
+export class OpenRouterProvider implements AIProvider, ChatJSONProvider {
   readonly name = "openrouter";
   readonly modelVersion: string;
 
@@ -79,6 +79,32 @@ export class OpenRouterProvider implements AIProvider {
 
   constructor(private apiKey: string | undefined) {
     this.modelVersion = getEnv().OPENROUTER_MODEL;
+  }
+
+  /** Non-streaming JSON completion; throws AppError.aiUnavailable on failure. */
+  async completeJSON(req: ChatJSONRequest): Promise<unknown> {
+    const openai = this.getClient();
+    if (!openai) throw AppError.aiUnavailable("AI evaluation is not configured");
+    const env = getEnv();
+
+    const attempt = async (model: string): Promise<unknown | null> => {
+      const completion = await openai.chat.completions.create({
+        model,
+        messages: [
+          { role: "system", content: req.system },
+          { role: "user", content: req.user },
+        ],
+        temperature: req.temperature ?? 0.2,
+      });
+      return extractJson(completion.choices[0]?.message?.content ?? "");
+    };
+
+    // Fast model first, one retry on the stronger default model.
+    const parsed = (await attempt(env.OPENROUTER_FAST_MODEL)) ?? (await attempt(env.OPENROUTER_MODEL));
+    if (parsed === null || typeof parsed !== "object") {
+      throw AppError.aiUnavailable("Could not parse the evaluation result");
+    }
+    return parsed;
   }
 
   private getClient(): OpenAI | null {

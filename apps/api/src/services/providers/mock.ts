@@ -8,6 +8,8 @@ import type {
   ASRSegment,
   ASRTokensOpts,
   ASRWord,
+  ChatJSONProvider,
+  ChatJSONRequest,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -32,9 +34,48 @@ const MOCK_MODEL_ANSWER =
  * the question's rubric-hint coverage so the same input always yields the same
  * evaluation — required for reproducible benchmark runs.
  */
-export class MockAIProvider implements AIProvider {
+export class MockAIProvider implements AIProvider, ChatJSONProvider {
   readonly name = "mock-ai";
   readonly modelVersion = "mock-1";
+
+  /**
+   * Deterministic V2 evaluator model: parses the evaluator's section markers
+   * out of the prompt and returns contract-shaped content JSON derived from
+   * rubric-token coverage. Same input always yields the same JSON.
+   */
+  async completeJSON(req: ChatJSONRequest): Promise<unknown> {
+    const text = `${req.system}\n${req.user}`;
+    const rubric = extractSection(text, "RUBRIC HINTS");
+    const transcript = extractSection(text, "TRANSCRIPT").toLowerCase();
+    const rubricTokens = [...new Set(
+      rubric.toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 4),
+    )];
+    const found = rubricTokens.filter((t) => transcript.includes(t));
+    const missing = rubricTokens.filter((t) => !transcript.includes(t));
+    const coverage = rubricTokens.length > 0 ? found.length / rubricTokens.length : 0.5;
+
+    const contentBand = coverage >= 0.75 ? "strong" : coverage >= 0.4 ? "solid" : "needs_work";
+    return {
+      contentBand,
+      evidenceFound: found.slice(0, 6),
+      missingEvidence: missing.slice(0, 6),
+      misconceptions: [],
+      strengths: [
+        found.length > 0
+          ? `Covered ${found.length} of the expected points (${found.slice(0, 3).join(", ")}).`
+          : "Attempted the question with a structured attempt.",
+      ],
+      weaknesses:
+        missing.length > 0
+          ? [`Did not address: ${missing.slice(0, 3).join(", ")}.`]
+          : ["Could tighten the explanation further."],
+      organization: transcript.split(/\s+/).length > 40 ? "organized" : "loose",
+      nextActionInstruction:
+        missing.length > 0
+          ? `Next attempt, cover the missing point "${missing[0]}" before closing.`
+          : "Next attempt, add one concrete example to make the answer stronger.",
+    };
+  }
 
   async evaluate(req: AIEvalRequest, hooks?: AIEvalHooks): Promise<AIEvalResult> {
     const seed = hash(`${req.questionId}:${req.level}:${req.answerText}`);
@@ -135,6 +176,14 @@ const DEFAULT_MOCK_TRANSCRIPT =
   "Most databases use B-trees because they keep lookups logarithmic even as data grows. " +
   "The trade-off is that every write has to update the index which slows down inserts a bit. " +
   "And if the query needs most of the table anyway the optimizer might skip the index entirely.";
+
+function extractSection(text: string, marker: string): string {
+  const start = text.indexOf(`${marker}:`);
+  if (start === -1) return "";
+  const rest = text.slice(start + marker.length + 1);
+  const nextMarker = rest.search(/\n[A-Z][A-Z ]+:/);
+  return (nextMarker === -1 ? rest : rest.slice(0, nextMarker)).trim();
+}
 
 /** Rough duration estimate assuming ~16kHz 16-bit mono (~32KB/s). Clamped to sane bounds. */
 function estimateDurationMs(bytes: number): number {

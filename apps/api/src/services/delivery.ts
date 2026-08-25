@@ -1,4 +1,4 @@
-import type { ASRWord } from "../providers/types";
+import type { ASRWord } from "./providers/types";
 
 /**
  * Deterministic delivery metrics (build-plan §Wave1, contract §delivery).
