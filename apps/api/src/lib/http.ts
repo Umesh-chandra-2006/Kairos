@@ -6,6 +6,8 @@ export class AppError extends Error {
     public readonly code: ErrorCode,
     message?: string,
     public readonly details?: unknown,
+    /** Clients may safely auto-retry (transient failure; backoff advised). */
+    public readonly retryable: boolean = false,
   ) {
     super(message ?? ERROR_MESSAGES[code]);
     this.name = "AppError";
@@ -32,11 +34,11 @@ export class AppError extends Error {
   }
 
   static internal(message?: string): AppError {
-    return new AppError(500, ERROR_CODES.INTERNAL, message);
+    return new AppError(500, ERROR_CODES.INTERNAL, message, undefined, true);
   }
 
   static aiUnavailable(message?: string): AppError {
-    return new AppError(503, ERROR_CODES.AI_UNAVAILABLE, message);
+    return new AppError(503, ERROR_CODES.AI_UNAVAILABLE, message, undefined, true);
   }
 }
 

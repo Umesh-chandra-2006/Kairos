@@ -5,6 +5,9 @@ export interface EvaluationResult {
   score: number;
   feedback: string;
   modelAnswer: string;
+  /** Provenance — surfaced for observability; persisted with V2 evaluations. */
+  provider: string;
+  modelVersion: string;
 }
 
 interface EvalParams {
@@ -39,6 +42,12 @@ export const aiService = {
         onToken: (delta) => params.hub.publish(channel, { type: "token", delta }),
       },
     );
-    return { score: result.score, feedback: result.feedback, modelAnswer: result.modelAnswer };
+    return {
+      score: result.score,
+      feedback: result.feedback,
+      modelAnswer: result.modelAnswer,
+      provider: result.provider,
+      modelVersion: result.modelVersion,
+    };
   },
 };

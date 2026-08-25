@@ -5,7 +5,7 @@ import { AppError } from "../lib/http";
 
 export function notFoundHandler(_req: Request, res: Response) {
   res.status(404).json({
-    error: { code: ERROR_CODES.NOT_FOUND, message: ERROR_MESSAGES[ERROR_CODES.NOT_FOUND] },
+    error: { code: ERROR_CODES.NOT_FOUND, message: ERROR_MESSAGES[ERROR_CODES.NOT_FOUND], retryable: false },
   });
 }
 
@@ -27,7 +27,12 @@ function isHttpError(err: unknown): err is HttpErrorLike {
 export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction) {
   if (err instanceof AppError) {
     res.status(err.status).json({
-      error: { code: err.code, message: err.message, ...(err.details !== undefined ? { details: err.details } : {}) },
+      error: {
+        code: err.code,
+        message: err.message,
+        retryable: err.retryable,
+        ...(err.details !== undefined ? { details: err.details } : {}),
+      },
     });
     return;
   }
@@ -40,11 +45,11 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
         : err.type === "entity.too.large"
           ? "Request body is too large"
           : ERROR_MESSAGES[ERROR_CODES.VALIDATION];
-    res.status(status).json({ error: { code: ERROR_CODES.VALIDATION, message } });
+    res.status(status).json({ error: { code: ERROR_CODES.VALIDATION, message, retryable: false } });
     return;
   }
 
-  logger.error({ err, path: req.path }, "Unhandled error");
+  logger.error({ err, path: req.path, requestId: req.id }, "Unhandled error");
 
   if (res.headersSent) {
     _next(err);
@@ -52,6 +57,6 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   }
 
   res.status(500).json({
-    error: { code: ERROR_CODES.INTERNAL, message: ERROR_MESSAGES[ERROR_CODES.INTERNAL] },
+    error: { code: ERROR_CODES.INTERNAL, message: ERROR_MESSAGES[ERROR_CODES.INTERNAL], retryable: true },
   });
 }

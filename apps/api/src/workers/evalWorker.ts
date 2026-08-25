@@ -5,6 +5,7 @@ import { answers, questions, users } from "@kairos/db/schema";
 import type { AnswerStatusDb } from "@kairos/db/schema";
 import { dateStr } from "../lib/dates";
 import { logger } from "../lib/logger";
+import { logDomainEvent } from "../lib/obs";
 import { getRuntime } from "../queue";
 import { aiService } from "../services/ai.service";
 import { notificationService } from "../services/notification.service";
@@ -63,9 +64,12 @@ export function registerEvalWorker(): void {
     // --- Atomic claim: single-statement compare-and-set ---------------------
     if (!(await claimAnswerForEval(db, job.answerId))) {
       // Already claimed by another worker, or terminal (completed/failed/cancelled).
-      logger.info({ job }, "eval job: answer not claimable; skipping");
+      logDomainEvent("eval_claim_skipped", { userId: job.userId, answerId: job.answerId });
       return;
     }
+
+    const startedAt = Date.now();
+    logDomainEvent("eval_started", { userId: job.userId, answerId: job.answerId });
 
     try {
       await hub.publish(channel, { type: "status", status: "evaluating" });
@@ -109,6 +113,15 @@ export function registerEvalWorker(): void {
       const isPractice = answer.dailyKey === null;
       const streak = isPractice ? null : await streakService.recordActivity(db, job.userId, dateStr());
 
+      logDomainEvent("eval_completed", {
+        userId: job.userId,
+        answerId: job.answerId,
+        durationMs: Date.now() - startedAt,
+        provider: result.provider,
+        modelVersion: result.modelVersion,
+        score: result.score,
+      });
+
       await hub.publish(channel, {
         type: "done",
         score: result.score,
@@ -129,6 +142,12 @@ export function registerEvalWorker(): void {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Evaluation failed";
       logger.error({ err, job }, "eval job failed");
+      logDomainEvent("eval_failed", {
+        userId: job.userId,
+        answerId: job.answerId,
+        durationMs: Date.now() - startedAt,
+        outcome: message.slice(0, 200),
+      });
       // --- Guarded failure: demote only if we still own the row ------------
       await db
         .update(answers)

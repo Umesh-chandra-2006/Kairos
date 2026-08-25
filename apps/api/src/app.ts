@@ -1,5 +1,6 @@
 import path from "node:path";
 import fs from "node:fs";
+import { randomUUID } from "node:crypto";
 import express, { type Express } from "express";
 import helmet from "helmet";
 import cors from "cors";
@@ -20,7 +21,20 @@ export function createApp(): Express {
   const app = express();
 
   app.set("trust proxy", 1);
-  app.use(pinoHttp({ logger }));
+  // Correlation: honor an inbound x-request-id (API gateway / client retries),
+  // otherwise mint one. Echoed on every response and attached to all log lines.
+  app.use(
+    pinoHttp({
+      logger,
+      genReqId: (req, res) => {
+        const incoming = req.headers["x-request-id"];
+        const id =
+          typeof incoming === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(incoming) ? incoming : randomUUID();
+        res.setHeader("x-request-id", id);
+        return id;
+      },
+    }),
+  );
   app.use(helmet());
   app.use(cors({ origin: corsOrigins(env), credentials: true }));
   app.use(express.json({ limit: "1mb" }));
