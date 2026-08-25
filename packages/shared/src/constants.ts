@@ -60,6 +60,75 @@ export type SkillLevel = (typeof SKILL_LEVELS)[number];
 export const ANSWER_STATUSES = ["pending", "evaluating", "completed", "failed"] as const;
 export type AnswerStatus = (typeof ANSWER_STATUSES)[number];
 
+// ---------------------------------------------------------------------------
+// V2 evaluation contract primitives
+// ---------------------------------------------------------------------------
+
+/** Version of the canonical evaluation result schema (see schemas/evaluation.ts). */
+export const EVALUATION_CONTRACT_VERSION = 1;
+
+/** The three-band grade. Bands are stable where 1–10 points are not. */
+export const BANDS = ["needs_work", "solid", "strong"] as const;
+export type Band = (typeof BANDS)[number];
+
+/** UI labels for bands — the only strings a student should ever see. */
+export const BAND_LABELS: Record<Band, string> = {
+  needs_work: "Needs Work",
+  solid: "Solid",
+  strong: "Strong",
+};
+
+/** Provenance of an evaluated value: LLM-generated vs deterministic measurement. */
+export const EVALUATION_SOURCES = ["model", "deterministic"] as const;
+export type EvaluationSource = (typeof EVALUATION_SOURCES)[number];
+
+/**
+ * Explicit submission state machine for V2.
+ * Extends the V1 answer statuses (`pending`/`evaluating` map to
+ * `created`/`processing`) so every transition is intentional and auditable:
+ *
+ *   created → queued → processing → completed
+ *                              ├→ failed → queued (retry) | cancelled
+ *   created|queued → cancelled
+ */
+export const SUBMISSION_STATUSES = [
+  "created",
+  "queued",
+  "processing",
+  "completed",
+  "failed",
+  "cancelled",
+] as const;
+export type SubmissionStatus = (typeof SUBMISSION_STATUSES)[number];
+
+/** Legal transitions; anything absent is illegal and must be rejected atomically. */
+export const SUBMISSION_TRANSITIONS: Record<SubmissionStatus, readonly SubmissionStatus[]> = {
+  created: ["queued", "cancelled"],
+  queued: ["processing", "cancelled"],
+  processing: ["completed", "failed", "queued"],
+  completed: [],
+  failed: ["queued", "cancelled"],
+  cancelled: [],
+};
+
+/** Terminal states — no further transitions, safe to skip duplicate work. */
+export const TERMINAL_SUBMISSION_STATUSES: readonly SubmissionStatus[] = ["completed", "cancelled"];
+
+/** States from which an atomic worker claim is allowed. */
+export const CLAIMABLE_SUBMISSION_STATUSES: readonly SubmissionStatus[] = ["queued"];
+
+export function canTransitionSubmission(from: SubmissionStatus, to: SubmissionStatus): boolean {
+  return SUBMISSION_TRANSITIONS[from].includes(to);
+}
+
+/** Legacy V1 status → V2 submission status mapping (dual-read path). */
+export const LEGACY_ANSWER_STATUS_MAP: Record<AnswerStatus, SubmissionStatus> = {
+  pending: "created",
+  evaluating: "processing",
+  completed: "completed",
+  failed: "failed",
+};
+
 export const ERROR_CODES = {
   VALIDATION: "VALIDATION_ERROR",
   UNAUTHORIZED: "UNAUTHORIZED",
