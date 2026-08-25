@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, lt } from "drizzle-orm";
 import { getDb, type DB } from "@kairos/db";
 import { answers, questions } from "@kairos/db/schema";
 import type { AnswerWithQuestion, SubmitAnswerInput } from "@kairos/shared";
+import { SUBMISSION_TO_LEGACY_ANSWER_STATUS } from "@kairos/shared";
 import { dateStr } from "../lib/dates";
 import { AppError } from "../lib/http";
 import { getRuntime } from "../queue";
@@ -17,7 +18,8 @@ function toAnswerWithQuestion(row: typeof answers.$inferSelect, q: typeof questi
     score: row.score,
     feedback: row.feedback,
     modelAnswer: row.modelAnswer,
-    status: row.status,
+    // Dual-read projection: V1 clients only ever see legacy status values.
+    status: SUBMISSION_TO_LEGACY_ANSWER_STATUS[row.status],
     errorMessage: row.errorMessage,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),

@@ -129,6 +129,21 @@ export const LEGACY_ANSWER_STATUS_MAP: Record<AnswerStatus, SubmissionStatus> = 
   failed: "failed",
 };
 
+/**
+ * V2 submission status → legacy answer status. Response projection so V1
+ * clients keep seeing only ANSWER_STATUSES values (build-plan §0.3).
+ */
+export const SUBMISSION_TO_LEGACY_ANSWER_STATUS: Record<SubmissionStatus | AnswerStatus, AnswerStatus> = {
+  created: "pending",
+  queued: "evaluating",
+  processing: "evaluating",
+  completed: "completed",
+  failed: "failed",
+  cancelled: "failed",
+  pending: "pending",
+  evaluating: "evaluating",
+};
+
 export const ERROR_CODES = {
   VALIDATION: "VALIDATION_ERROR",
   UNAUTHORIZED: "UNAUTHORIZED",
