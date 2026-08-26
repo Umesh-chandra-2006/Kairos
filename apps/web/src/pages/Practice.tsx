@@ -4,6 +4,7 @@ import { api, watchAnswerResult, watchVoiceEvaluation, type VoiceStage } from ".
 import { ErrorBanner } from "../components/forms";
 import { AnswerResultView } from "../components/AnswerResultView";
 import { VoiceResultView } from "../components/VoiceResultView";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 
 type Mode = "text" | "voice";
 
@@ -57,7 +58,25 @@ const STAGE_LABEL: Record<VoiceStage, string> = {
   evaluating: "AI is evaluating your answer…",
 };
 
-export function Practice() {
+function getMicErrorMessage(err: unknown): string {
+  if (err instanceof DOMException) {
+    if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+      return "Microphone access was denied. Please allow mic permission in your browser settings and try again.";
+    }
+    if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+      return "No microphone found. Please connect a microphone and try again.";
+    }
+    if (err.name === "NotReadableError" || err.name === "TrackStartError") {
+      return "Your microphone is in use by another app. Close other apps using the mic and try again.";
+    }
+    if (err.name === "OverconstrainedError") {
+      return "Your microphone doesn't meet the requirements. Try a different microphone.";
+    }
+  }
+  return "Could not access your microphone. Check your browser settings and try again.";
+}
+
+function PracticeInner() {
   const [phase, setPhase] = useState<Phase>({ name: "pick" });
   const [category, setCategory] = useState<string | undefined>(undefined);
   const [answerText, setAnswerText] = useState("");
@@ -166,6 +185,12 @@ export function Practice() {
   async function startRecording(question: Question) {
     setError(null);
     try {
+      // Check if browser supports getUserMedia
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setError("Your browser doesn't support microphone recording. Try Chrome, Firefox, or Edge.");
+        return;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
       chunksRef.current = [];
@@ -183,9 +208,8 @@ export function Practice() {
       recTimerStart(question);
       recorder.start();
       setPhase({ name: "recording", question });
-    } catch {
-      setError("Microphone access was denied. Allow mic permission or switch to typing.");
-      return;
+    } catch (err) {
+      setError(getMicErrorMessage(err));
     }
   }
 
@@ -366,7 +390,7 @@ export function Practice() {
               Answer out loud, as you would in the interview. Speak for up to two minutes, then stop to get
               evaluated on content, structure and delivery.
             </p>
-            <div className="row-end">
+            <div className="row-between">
               <button className="btn btn-secondary" onClick={() => loadQuestion(category)}>
                 Skip question
               </button>
@@ -447,5 +471,13 @@ export function Practice() {
       />
       <FollowUpCard followUps={followUps} />
     </div>
+  );
+}
+
+export function Practice() {
+  return (
+    <ErrorBoundary>
+      <PracticeInner />
+    </ErrorBoundary>
   );
 }

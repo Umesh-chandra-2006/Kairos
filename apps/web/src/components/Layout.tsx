@@ -30,11 +30,11 @@ export function Layout() {
           <NavLink to="/practice" className={linkClass}>
             Practice
           </NavLink>
+          <NavLink to="/skills" className={linkClass}>
+            Skills
+          </NavLink>
           <NavLink to="/streak" className={linkClass}>
             Streak
-          </NavLink>
-          <NavLink to="/leaderboard" className={linkClass}>
-            Leaderboard
           </NavLink>
           <NavLink to="/history" className={linkClass}>
             History

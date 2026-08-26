@@ -13,6 +13,7 @@ import { Practice } from "./pages/Practice";
 import { Register } from "./pages/Register";
 import { ResetPassword } from "./pages/ResetPassword";
 import { Settings } from "./pages/Settings";
+import { SkillProfile } from "./pages/SkillProfile";
 import { Streak } from "./pages/Streak";
 import { VerifyEmail } from "./pages/VerifyEmail";
 
@@ -41,6 +42,7 @@ export function App() {
         <Route path="/" element={user && !user.profile ? <Navigate to="/onboarding" replace /> : <Dashboard />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/practice" element={<Practice />} />
+        <Route path="/skills" element={<SkillProfile />} />
         <Route path="/streak" element={<Streak />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/history" element={<History />} />

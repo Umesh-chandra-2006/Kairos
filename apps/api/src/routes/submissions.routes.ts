@@ -8,6 +8,7 @@ import type { EvaluationResult } from "@kairos/shared";
 import { asyncHandler, AppError } from "../lib/http";
 import { requireAuth } from "../middleware/auth";
 import { aiRateLimit } from "../middleware/rateLimit";
+import { requireEvalQuota } from "../middleware/usageLimit";
 import { newAudioKey, getAudioStorage } from "../services/audio/storage";
 import { getRuntime } from "../queue";
 
@@ -36,6 +37,7 @@ submissionsRouter.use(requireAuth);
 submissionsRouter.post(
   "/voice",
   aiRateLimit(),
+  requireEvalQuota,
   rawAudio,
   asyncHandler(async (req, res) => {
     const meta = voiceMetaSchema.safeParse(req.query);

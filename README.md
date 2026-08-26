@@ -1,31 +1,110 @@
-# Kairos
+# Kairos — AI Interview Preparation Platform
 
-AI-powered interview preparation app. Answer one question a day, get a personalized
-AI evaluation, and build your streak. Spec: `kairos_prd.md`.
+> Voice-first, adaptive interview training that builds real confidence.
 
-**Status:** v1 (written-answer product) is feature-complete — auth, daily challenge,
-practice mode, AI evaluation pipeline, streaks, push/email notifications, leaderboard,
-and a production Docker deployment. The voice-first B2B2C pivot (v2) is documented in
-`kairos-v2-strategy.md` but not yet implemented. See `documentation.md` for the full
-manual and `kairos-v2-brutal-research.md` for the adversarial market review.
+Kairos helps job seekers prepare for technical interviews through daily spoken
+practice, AI-powered evaluation across 10 skill dimensions, adaptive question
+selection targeting your weakest areas, and progressive skill tracking over time.
 
-Monorepo (pnpm workspaces):
+**Status:** Production-ready for general-audience launch. Voice evaluation,
+adaptive engine, skills taxonomy, subscription billing, GDPR compliance, and
+observability are all built and tested.
 
-| Package | Path | What it is |
-| --- | --- | --- |
-| `@kairos/api` | `apps/api` | Express 4 API + async LLM eval queue + SSE streaming |
+---
+
+## What's built
+
+### Core product
+- **Daily challenge** — one question per day, same for all users, from 19 categories
+- **Practice mode** — pick a topic, answer unlimited questions with full AI evaluation
+- **Voice mode** — record spoken answers, get ASR transcript + content/structure/delivery evaluation
+- **AI evaluation** — structured rubric-based scoring across 3 dimensions (content, structure, delivery), 3 bands (needs_work, solid, strong)
+- **Adaptive engine** — targets weakest skill areas, uses spaced repetition (SM-2)
+- **Skills taxonomy** — 10 dimensions tracked with EMA: technical_explanation, structure, conciseness, relevance, clarity, fluency, composure, domain_depth, conclusion_strength, delivery_quality
+- **Skill profile** — radar chart visualization, trend detection (improving/stable/declining), weakness drilldown
+
+### Engagement
+- **Streaks** — daily streak with freeze mechanics
+- **Leaderboard** — top-20 rankings + personal rank
+- **Notifications** — web push, email (weekly digest), configurable reminders
+- **Follow-up questions** — AI-generated questions targeting weak areas from last answer
+
+### Subscription & billing
+- **Free tier** — 3 evaluations/day, 10 voice minutes/day
+- **Pro tier** — unlimited (₹9.99/month via Stripe)
+- **Checkout flow** — Stripe Checkout session → webhook → plan activation
+- **Billing portal** — manage subscription, update payment, cancel
+
+### Compliance
+- **GDPR** — data export (full JSON download), account deletion (anonymize + async erase), consent logging
+- **Cookie consent** — banner with accept/decline, logged to consent_log table
+- **Recording lifecycle** — audio stored with configurable retention, auto-deletion
+
+### Infrastructure
+- **Observability** — API latency tracking, worker eval metrics, LLM cost estimation, `GET /health/metrics`
+- **Band-flip harness** — benchmark re-scoring tool for quality assurance (6 fixtures, pass criteria: ≤15% flip rate, zero critical flips)
+- **Usage limits** — per-plan daily quotas enforced at API middleware level
+
+### Web app
+- React 19 + Vite + React Router v6
+- Light/dark theme
+- Responsive design
+- Error boundaries on all interactive pages
+- Mic permission handling with clear error messages
+
+---
+
+## Architecture
+
+```
+┌─────────────┐     ┌──────────────┐     ┌─────────────┐
+│   Web (SPA) │────▶│  Express API │────▶│  MySQL 8.4  │
+│  React 19   │     │  Port 4000   │     │  Port 3307  │
+└─────────────┘     └──────┬───────┘     └─────────────┘
+                           │
+                    ┌──────┴───────┐     ┌─────────────┐
+                    │  BullMQ /    │────▶│  Redis 7    │
+                    │  In-Process  │     │  Port 6380  │
+                    └──────┬───────┘     └─────────────┘
+                           │
+                    ┌──────┴───────┐
+                    │  Eval Worker │
+                    │  (ASR + LLM) │
+                    └──────────────┘
+```
+
+### Monorepo packages
+
+| Package | Path | Purpose |
+|---|---|---|
+| `@kairos/api` | `apps/api` | Express 4 API, async eval queue, SSE streaming |
 | `@kairos/web` | `apps/web` | React 19 + Vite web client |
-| `@kairos/mobile` | `apps/mobile` | Expo SDK 57 (React Native) mobile client |
-| `@kairos/db` | `packages/db` | MySQL 8 + Drizzle ORM schema, migrations, seed |
+| `@kairos/mobile` | `apps/mobile` | Expo SDK (React Native) mobile client |
+| `@kairos/db` | `packages/db` | MySQL 8 + Drizzle ORM schema, 12 migrations |
 | `@kairos/shared` | `packages/shared` | Shared zod schemas + constants |
 | `@kairos/config` | `packages/config` | Centralized env loading/validation |
 | `@kairos/email` | `packages/email` | Resend email client (dry-run in dev) |
 
-## Prerequisites
+### API endpoints (37 total)
 
-- Node.js >= 22, pnpm >= 10.4
-- Docker (MySQL 8 + Redis 7 via `docker-compose.yml`)
-- A `.env` file at the repo root (see `.env.example`)
+| Domain | Endpoints |
+|---|---|
+| Auth | register, login, refresh, logout, verify-email, forgot-password, reset-password, change-password, onboarding, me, session |
+| Questions | today, practice, list, model-answer |
+| Answers | submit, practice, history, weekly-summary, detail, follow-up, confirm, stream |
+| Voice | submit-voice, evaluation, evaluation-stream |
+| Skills | profile, weak |
+| Streak | get, refill |
+| Leaderboard | top-20, my-rank |
+| Billing | plans, checkout, portal, webhook |
+| Account | export, delete, consent, stats |
+| Notifications | prefs, vapid-key, subscriptions, push-subscribe, push-unsubscribe |
+| Analytics | batch-ingest |
+| Health | health, metrics |
+| Flags | feature-flags |
+| TPO | activation, improvement, weak-skills, intervention, readiness-trend, calibration |
+
+---
 
 ## Quick start
 
@@ -35,131 +114,145 @@ docker compose up -d
 
 # 2. Environment
 cp .env.example .env
-#   - set JWT_SECRET (see .env.example for the generator)
-#   - optionally set OPENROUTER_API_KEY, RESEND_API_KEY, WEB_PUSH_* keys
+# Required: JWT_SECRET (32+ chars)
+# Optional: OPENROUTER_API_KEY, RESEND_API_KEY, STRIPE_SECRET_KEY
 
 # 3. Dependencies
 pnpm install
 
-# 4. Database
+# 4. Database (12 migrations)
 pnpm db:migrate
 pnpm db:seed
 
 # 5. Run API (:4000) + web (:5173)
 pnpm dev
-
-# Mobile (separate terminal)
-pnpm dev:mobile
 ```
 
-Ports: API on `4000`, web dev server on `5173` (proxies `/api`), MySQL on
-`3307`, Redis on `6380` (remapped in `docker-compose.yml` to avoid conflicts
-with other local containers).
+### Ports
 
-## Useful commands
+| Service | Port | Notes |
+|---|---|---|
+| API | 4000 | Express + SSE |
+| Web | 5173 | Vite dev server |
+| MySQL | 3307 | Remapped from 3306 |
+| Redis | 6380 | Remapped from 6379 |
+
+### Useful commands
 
 ```bash
-pnpm typecheck        # all packages
-pnpm test             # all packages (runs API integration tests)
-pnpm build            # API (CJS bundle) + web production builds
-pnpm --filter @kairos/api test        # API integration tests only
-pnpm --filter @kairos/api test -- -t "streak"   # single test
-pnpm db:generate      # regenerate Drizzle migrations after schema changes
-pnpm db:migrate       # apply migrations
-pnpm db:seed          # seed questions (450+ curated across 19 categories)
-pnpm docker:up / pnpm docker:down
-
-# Production deployment (single VM, Docker Compose + Caddy TLS)
-pnpm deploy:prod      # build & start deploy/docker-compose.prod.yml stack
-pnpm deploy:logs      # follow API logs
-pnpm backup:prod      # MySQL dump to OCI object storage (see deploy/)
+pnpm typecheck                              # all packages
+pnpm test                                   # all packages
+pnpm --filter @kairos/api test              # API tests only
+pnpm --filter @kairos/api test -- -t "streak"  # single test
+pnpm db:generate                            # regenerate migrations
+pnpm db:migrate                             # apply migrations
+pnpm db:seed                                # seed 450+ questions
+pnpm build                                  # production builds
+pnpm deploy:prod                            # Docker Compose prod stack
 ```
+
+---
+
+## Environment variables
+
+### Required
+
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | MySQL connection string |
+| `JWT_SECRET` | 32+ character secret for JWT signing |
+
+### Optional (production-required)
+
+| Variable | Description |
+|---|---|
+| `REDIS_URL` | Redis connection (required in prod for BullMQ) |
+| `OPENROUTER_API_KEY` | LLM provider key (required for AI evaluation) |
+| `RESEND_API_KEY` | Email provider key (required for transactional email) |
+| `STRIPE_SECRET_KEY` | Stripe API key (required for billing) |
+| `STRIPE_PRO_PRICE_ID` | Stripe price ID for Pro plan |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
+
+### Feature toggles
+
+| Variable | Default | Description |
+|---|---|---|
+| `AI_PROVIDER` | `auto` | `auto`, `openrouter`, or `mock` |
+| `ASR_PROVIDER` | `auto` | `auto`, `localwhisper`, `groq`, or `mock` |
+| `WEB_PUSH_PUBLIC_KEY` | — | VAPID public key for web push |
+| `WEB_PUSH_PRIVATE_KEY` | — | VAPID private key for web push |
+
+---
+
+## Testing
+
+```bash
+# Run all tests (170+)
+pnpm test
+
+# API integration tests (needs Docker MySQL + Redis)
+pnpm --filter @kairos/api test
+
+# Single test file
+pnpm --filter @kairos/api test -- -t "skillScoring"
+```
+
+- Tests use a disposable `kairos_test` database (drop + recreate per run)
+- In-process queue runtime (no Redis dependency in tests)
+- Without `OPENROUTER_API_KEY`, evaluation gracefully degrades to "AI evaluation is not configured"
+- `LOG_LEVEL=silent` suppresses pino output in tests
+
+---
 
 ## Production deployment
 
 The `deploy/` directory contains a self-contained production stack:
-`mysql:8.4` + `redis:7` + the API container (which also serves the built web
-client) behind `caddy:2` for automatic HTTPS. Target host docs live in
-[`deploy/PROVISIONING.md`](deploy/PROVISIONING.md) (Oracle Cloud Always Free
-walkthrough, DuckDNS hostname, secrets file, backups). Secrets go in
-`deploy/.env` (git-ignored); in production `REDIS_URL`, `OPENROUTER_API_KEY`,
-and `RESEND_API_KEY` are validated as required at startup.
+`mysql:8.4` + `redis:7` + API (serves built web client) + `caddy:2` for TLS.
 
-## Testing notes
+See [`deploy/PROVISIONING.md`](deploy/PROVISIONING.md) for:
+- Oracle Cloud Always Free walkthrough
+- DuckDNS hostname setup
+- Secrets file configuration
+- Backup procedures
 
-- API integration tests spin up a disposable `kairos_test` database and seed
-  their own questions; they need Docker MySQL/Redis running. Start it with
-  `pnpm docker:up` — MySQL must be reachable on host port `3307` and Redis on
-  `6380` (as mapped in `docker-compose.yml`) before running `pnpm test`.
-- `pnpm test` runs every workspace package. `@kairos/shared` and `@kairos/config`
-  currently ship no unit tests (their local `vitest.config.ts` just keeps Vitest
-  from walking up into an unrelated `vite.config.ts` on the parent drive).
-- Tests force the **in-process** queue runtime (no Redis dependency) via
-  `apps/api/src/test/setup.ts`.
-- Without `OPENROUTER_API_KEY`, evaluation degrades gracefully: answers move to
-  `failed` with `errorMessage: "AI evaluation is not configured"` instead of
-  hanging. This is the expected behavior in tests and in local dev without a key.
-- Set `LOG_LEVEL=silent` (default for tests) to quiet pino output.
+---
 
-## Architecture
+## What's left to build
 
-Full manual: [`documentation.md`](documentation.md). Summary:
+### Before general launch
 
-- **Auth**: custom JWT (access 15m) + rotating refresh token (30d). Web uses an
-  HttpOnly cookie; mobile sends `{ device: "mobile", refreshToken }` in the body.
-  Reused refresh tokens are detected and the token family is revoked.
-- **Email verification / password reset**: tokenized links via Resend; dry-run
-  logging in dev.
-- **Evaluation**: submitting an answer enqueues an eval job (Redis BullMQ, or an
-  in-process fallback). The eval worker streams progress over SSE
-  (`status` / `token` / `done` / `error` events) and persists the structured
-  evaluation. Practice answers stream the same way but never affect streaks.
-- **Daily challenge**: a deterministic, community-shared question each day —
-  every user gets the exact same question (seeded by date), picked from the
-  core technical categories.
-- **Practice mode**: 19 categories (core + full-stack, cloud, security, testing,
-  DevOps, mobile, ML, agile, product, HR…). Pick a topic and answer unlimited
-  random questions with full AI evaluation; practice answers don't count toward
-  the daily streak.
-- **Streaks**: daily streak with freeze unlocks; a missed day auto-consumes a
-  freeze to keep the streak alive (one freeze/week, refilled on read).
-- **Notifications**: a minute-tick scheduler enqueues daily reminders
-  (matched to each user's local `reminderTime`) into a reliable outbox table and
-  drains it to Expo push / web push / email with retries and a dead-letter cap.
-  Every Monday it also sends a weekly re-engagement email: questions answered,
-  average score, and weakest category for the previous week.
+| Item | Status | Notes |
+|---|---|---|
+| ~~Payment/subscription~~ | ✅ Built | Stripe Checkout + webhook + billing portal |
+| ~~Onboarding flow~~ | ✅ Exists | Goal setting, level, targets, notification time |
+| ~~Email verification~~ | ✅ Exists | Resend-powered, token-based |
+| ~~Password reset~~ | ✅ Exists | Token-based, 1-hour expiry |
+| ~~Skill profile UI~~ | ✅ Built | Radar chart, score bars, trend badges |
+| ~~GDPR data export~~ | ✅ Built | Full JSON download |
+| ~~GDPR account deletion~~ | ✅ Built | Anonymize + async erase |
+| ~~Consent logging~~ | ✅ Built | Accept/decline banner, audit trail |
+| ~~Voice UI hardening~~ | ✅ Built | ErrorBoundary, mic permission messages, browser compat check |
+| ~~Usage limits~~ | ✅ Built | Per-plan daily quotas at API middleware |
+| ~~Observability~~ | ✅ Built | API latency, worker metrics, LLM cost, /health/metrics |
+| Stripe live mode | 🔧 Config needed | Set real STRIPE_SECRET_KEY + price ID |
+| Email templates | 🔧 Optional | Current: plain text; can add branded HTML |
+| Load testing | 🔧 Not started | Recommended before >100 concurrent users |
+| PWA manifest | 🔧 Not started | Install prompt, offline support |
+| Mobile testing | 🔧 Not started | Expo app exists but untested on real devices |
 
-## Mobile design system
+### Deferred (Wave 4 — college/B2B2C)
 
-The mobile app follows the instrument-panel design language in
-[`design.md`](design.md): one signature "moment ring" motif reused across Home /
-Evaluation / Progress, amber = doing today's thing, teal = the system analyzing
-your work, mono type for everything numeric. Five tabs: Today, Practice,
-Progress, History, Profile. Interactive prototype: `kairos-mobile-screens.html`;
-navigation map: `kairos-flow-diagram.html`.
+| Item | Notes |
+|---|---|
+| TPO dashboard | 6 endpoints built but gated behind requireTpoAuth |
+| College management | collegeId scoping exists, no admin UI |
+| Outcome self-reporting | Table exists, no student-facing form |
+| Control group / A/B | Not started |
+| WhatsApp reminders | Deferred (cost + compliance concerns) |
+| Multi-role RBAC | Placeholder only (user/admin/tpo enums) |
 
-## Push notifications
+---
 
-Push is wired end-to-end on both clients; the server delivers via an outbox
-(Expo push for mobile, Web Push VAPID for browser). To actually receive
-notifications you need two things configured:
+## License
 
-1. **Web (VAPID keys)** — set `WEB_PUSH_PUBLIC_KEY` / `WEB_PUSH_PRIVATE_KEY`
-   in `.env` (generate with the command in `.env.example`). The browser then
-   shows an "Enable browser notifications" button in **Settings** (web) /
-   **Profile** (mobile); it registers a service worker
-   (`apps/web/public/sw.js`) and posts the subscription to
-   `POST /api/notifications/push-subscriptions`. Without keys, the card reports
-   "not configured" and delivery dry-runs.
-2. **Mobile (Expo push)** — set `EXPO_PUBLIC_EAS_PROJECT_ID` to your EAS
-   project ID. The **Profile** tab shows "Enable push notifications", which
-   requests permission, gets an Expo push token, and registers it with the API.
-   Without a project ID the button explains what to set.
-
-Both clients list/remove subscriptions on logout via
-`GET /api/notifications/subscriptions`.
-
-## CI
-
-`.github/workflows/ci.yml` runs typecheck, API tests, and production builds on
-push/PR against service containers (MySQL + Redis).
+Proprietary. Internal use only.

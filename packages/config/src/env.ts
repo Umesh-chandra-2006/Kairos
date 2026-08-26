@@ -65,6 +65,9 @@ const envSchema = z.object({
   RATE_LIMIT_MAX: z.coerce.number().default(100),
   RATE_LIMIT_AUTH_MAX: z.coerce.number().default(10),
   RATE_LIMIT_AI_MAX: z.coerce.number().default(10),
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_PRO_PRICE_ID: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
 })
   .superRefine((data, ctx) => {
     if (data.NODE_ENV !== "production") return;

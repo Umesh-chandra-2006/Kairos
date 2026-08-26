@@ -679,3 +679,113 @@ export const skillEvidence = mysqlTable(
 
 export type SkillEvidence = typeof skillEvidence.$inferSelect;
 export type InsertSkillEvidence = typeof skillEvidence.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// subscriptions — Stripe subscription state per user (build-plan launch)
+// One row per user; plan = 'free' | 'pro' | 'team'.
+// ---------------------------------------------------------------------------
+export const SUBSCRIPTION_PLAN_ENUM = ["free", "pro", "team"] as const;
+export const SUBSCRIPTION_STATUS_ENUM = ["active", "past_due", "canceled", "trialing"] as const;
+
+export const subscriptions = mysqlTable(
+  "subscriptions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    stripeCustomerId: varchar("stripeCustomerId", { length: 128 }),
+    stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 128 }),
+    plan: varchar("plan", { length: 32 }).default("free").notNull(),
+    status: varchar("status", { length: 32 }).default("active").notNull(),
+    currentPeriodStart: timestamp("currentPeriodStart"),
+    currentPeriodEnd: timestamp("currentPeriodEnd"),
+    cancelAtPeriodEnd: boolean("cancelAtPeriodEnd").default(false).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("subscriptions_user_idx").on(t.userId),
+    uniqueIndex("subscriptions_stripe_customer_idx").on(t.stripeCustomerId),
+    uniqueIndex("subscriptions_stripe_sub_idx").on(t.stripeSubscriptionId),
+  ],
+);
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = typeof subscriptions.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// usage_tracking — daily usage limits per user (build-plan launch)
+// Free tier: 3 evals/day, 10 voice min/day. Pro: unlimited.
+// ---------------------------------------------------------------------------
+export const usageTracking = mysqlTable(
+  "usage_tracking",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    date: varchar("date", { length: 10 }).notNull(),
+    evaluationsUsed: int("evaluationsUsed").default(0).notNull(),
+    evaluationsLimit: int("evaluationsLimit").default(3).notNull(),
+    voiceMinutesUsed: int("voiceMinutesUsed").default(0).notNull(),
+    voiceMinutesLimit: int("voiceMinutesLimit").default(10).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("usage_tracking_user_date_idx").on(t.userId, t.date),
+  ],
+);
+
+export type UsageTracking = typeof usageTracking.$inferSelect;
+export type InsertUsageTracking = typeof usageTracking.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// consent_log — GDPR consent audit trail (build-plan launch)
+// ---------------------------------------------------------------------------
+export const consentLog = mysqlTable(
+  "consent_log",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    consentType: varchar("consentType", { length: 64 }).notNull(),
+    granted: boolean("granted").notNull(),
+    ipAddress: varchar("ipAddress", { length: 45 }),
+    userAgent: varchar("userAgent", { length: 255 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [
+    index("consent_log_user_idx").on(t.userId),
+  ],
+);
+
+export type ConsentLog = typeof consentLog.$inferSelect;
+export type InsertConsentLog = typeof consentLog.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// data_deletions — GDPR erasure requests (build-plan launch)
+// ---------------------------------------------------------------------------
+export const DATA_DELETION_STATUS_ENUM = ["pending", "processing", "completed", "failed"] as const;
+
+export const dataDeletions = mysqlTable(
+  "data_deletions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 32 }).default("pending").notNull(),
+    requestedAt: timestamp("requestedAt").defaultNow().notNull(),
+    processedAt: timestamp("processedAt"),
+    error: varchar("error", { length: 500 }),
+  },
+  (t) => [
+    index("data_deletions_user_idx").on(t.userId),
+  ],
+);
+
+export type DataDeletion = typeof dataDeletions.$inferSelect;
+export type InsertDataDeletion = typeof dataDeletions.$inferInsert;

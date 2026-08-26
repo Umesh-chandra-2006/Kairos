@@ -1,7 +1,9 @@
 import { Router } from "express";
+import { accountRouter } from "./account.routes";
 import { answersRouter } from "./answers.routes";
 import { analyticsRouter } from "./analytics.routes";
 import { authRouter } from "./auth.routes";
+import { billingRouter } from "./billing.routes";
 import { evaluationsRouter } from "./evaluations.routes";
 import { flagsRouter } from "./flags.routes";
 import { healthRouter } from "./health.routes";
@@ -27,4 +29,6 @@ apiRouter.use("/submissions", submissionsRouter);
 apiRouter.use("/evaluations", evaluationsRouter);
 apiRouter.use("/skills", skillsRouter);
 apiRouter.use("/flags", flagsRouter);
+apiRouter.use("/billing", billingRouter);
+apiRouter.use("/account", accountRouter);
 apiRouter.use("/tpo", tpoRouter);

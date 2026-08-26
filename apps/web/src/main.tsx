@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext";
+import { ConsentBanner } from "./components/ConsentBanner";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { App } from "./App";
@@ -14,6 +15,7 @@ createRoot(document.getElementById("root")!).render(
         <BrowserRouter>
           <AuthProvider>
             <App />
+            <ConsentBanner />
           </AuthProvider>
         </BrowserRouter>
       </ThemeProvider>

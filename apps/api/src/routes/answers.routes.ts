@@ -8,6 +8,7 @@ import { AppError, asyncHandler } from "../lib/http";
 import { verifyAccessToken } from "../lib/tokens";
 import { requireAuth } from "../middleware/auth";
 import { aiRateLimit } from "../middleware/rateLimit";
+import { requireEvalQuota } from "../middleware/usageLimit";
 import { validate } from "../middleware/validate";
 import { getRuntime } from "../queue";
 import { answerService } from "../services/answer.service";
@@ -98,6 +99,7 @@ answersRouter.use(requireAuth);
 answersRouter.post(
   "/submit",
   aiRateLimit(),
+  requireEvalQuota,
   validate(submitAnswerSchema),
   asyncHandler(async (req, res) => {
     const db = getDb();
@@ -109,6 +111,7 @@ answersRouter.post(
 answersRouter.post(
   "/practice",
   aiRateLimit(),
+  requireEvalQuota,
   validate(submitAnswerSchema),
   asyncHandler(async (req, res) => {
     const db = getDb();

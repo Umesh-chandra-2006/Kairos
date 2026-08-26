@@ -12,6 +12,13 @@ interface Prefs {
   reminderTime: string;
 }
 
+interface AccountStats {
+  memberSince: string;
+  totalAnswers: number;
+  currentStreak: number;
+  longestStreak: number;
+}
+
 export function Settings() {
   const { theme, resolved, setTheme } = useTheme();
   const [prefs, setPrefs] = useState<Prefs | null>(null);
@@ -22,12 +29,21 @@ export function Settings() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [busyPw, setBusyPw] = useState(false);
+  const [stats, setStats] = useState<AccountStats | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleteMsg, setDeleteMsg] = useState<string | null>(null);
 
   useEffect(() => {
     api
       .get<{ prefs: Prefs }>("/api/notifications/prefs")
       .then(({ prefs: p }) => setPrefs(p))
       .catch((err) => setError(err instanceof Error ? err.message : "Could not load settings"));
+    api
+      .get<{ stats: AccountStats }>("/api/account/stats")
+      .then(({ stats: s }) => setStats(s))
+      .catch(() => undefined);
   }, []);
 
   async function savePrefs(e: FormEvent) {
@@ -58,6 +74,44 @@ export function Settings() {
       setPwError(err instanceof Error ? err.message : "Could not change password");
     } finally {
       setBusyPw(false);
+    }
+  }
+
+  async function exportData() {
+    setExporting(true);
+    try {
+      const token = (await import("../api/client")).getAccessToken();
+      const res = await fetch("/api/account/export", {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `kairos-data-export.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not export data");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function deleteAccount(e: FormEvent) {
+    e.preventDefault();
+    setDeleting(true);
+    setDeleteMsg(null);
+    setError(null);
+    try {
+      const result = await api.post<{ message: string }>("/api/account/delete", { confirm: deleteConfirm });
+      setDeleteMsg(result.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete account");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -129,6 +183,30 @@ export function Settings() {
 
       <WebPushCard />
 
+      {stats && (
+        <div className="card">
+          <h2 className="card-title">Account Stats</h2>
+          <div className="stats-grid">
+            <div className="stat-item">
+              <span className="stat-value">{stats.totalAnswers}</span>
+              <span className="stat-label">Answers</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-value">{stats.currentStreak}</span>
+              <span className="stat-label">Current Streak</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-value">{stats.longestStreak}</span>
+              <span className="stat-label">Longest Streak</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-value">{stats.memberSince ? new Date(stats.memberSince).toLocaleDateString() : "—"}</span>
+              <span className="stat-label">Member Since</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="card">
         <h2 className="card-title">Change password</h2>
         <form onSubmit={changePassword} className="form">
@@ -144,6 +222,43 @@ export function Settings() {
             {busyPw ? "Changing…" : "Change password"}
           </button>
         </form>
+      </div>
+
+      <div className="card">
+        <h2 className="card-title">Your Data</h2>
+        <p className="muted" style={{ marginBottom: 12 }}>
+          Export all your data or request account deletion as per GDPR.
+        </p>
+        <div className="row-gap">
+          <button className="btn btn-primary" onClick={() => void exportData()} disabled={exporting}>
+            {exporting ? "Exporting…" : "Download my data (JSON)"}
+          </button>
+        </div>
+      </div>
+
+      <div className="card card-danger">
+        <h2 className="card-title" style={{ color: "var(--danger)" }}>Delete Account</h2>
+        <p className="muted" style={{ marginBottom: 12 }}>
+          This action is irreversible. Your account and all data will be permanently anonymized.
+        </p>
+        <ErrorBanner message={error} />
+        <SuccessBanner message={deleteMsg} />
+        {!deleteMsg && (
+          <form onSubmit={deleteAccount} className="form">
+            <Field label='Type DELETE_MY_ACCOUNT to confirm'>
+              <input
+                type="text"
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.target.value)}
+                placeholder="DELETE_MY_ACCOUNT"
+                required
+              />
+            </Field>
+            <button className="btn btn-danger" disabled={deleting || deleteConfirm !== "DELETE_MY_ACCOUNT"} type="submit">
+              {deleting ? "Deleting…" : "Permanently delete my account"}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

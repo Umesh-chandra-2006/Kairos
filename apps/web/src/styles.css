@@ -953,3 +953,235 @@ select:focus,
   white-space: pre-wrap;
 }
 
+/* ---- Skill Profile ---- */
+
+.radar-chart {
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  margin: 0 auto;
+  display: block;
+}
+
+.radar-label {
+  font-size: 11px;
+  fill: var(--muted);
+  font-weight: 600;
+}
+
+.skill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.skill-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.skill-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.skill-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.tag-sm {
+  font-size: 11px;
+  padding: 2px 6px;
+}
+
+.skill-score-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.score-track {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.score-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--brand-1);
+  transition: width 0.4s ease;
+}
+
+.skill-score {
+  font-weight: 700;
+  font-size: 14px;
+  min-width: 30px;
+  text-align: right;
+}
+
+.trend-badge {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.trend-up { color: var(--success); }
+.trend-down { color: var(--danger); }
+.trend-stable { color: var(--muted); }
+
+.skill-desc {
+  font-size: 13px;
+  margin: 0;
+}
+
+/* ---- Billing / Plans ---- */
+
+.plan-current {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.plan-badge {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 14px;
+  background: var(--brand-1);
+  color: #fff;
+}
+
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.plan-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.plan-card.plan-active {
+  border-color: var(--brand-1);
+  box-shadow: var(--ring);
+}
+
+.plan-name {
+  font-size: 20px;
+  margin: 0;
+}
+
+.plan-price {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.plan-features {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.plan-features li::before {
+  content: "✓ ";
+  color: var(--success);
+  font-weight: 700;
+}
+
+/* ---- Stats Grid ---- */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ---- Danger zone ---- */
+
+.card-danger {
+  border-color: var(--danger-border);
+  background: var(--danger-bg);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.btn-danger:hover:not(:disabled) {
+  opacity: 1;
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---- Consent banner ---- */
+
+.consent-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 16px 24px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  z-index: 100;
+  font-size: 14px;
+}
+
+.consent-banner p {
+  flex: 1;
+  margin: 0;
+}
+
+.row-gap {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+

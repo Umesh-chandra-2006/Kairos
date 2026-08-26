@@ -258,6 +258,17 @@ export const api = {
   subscribePush: (subscription: { token: string; keys: { p256dh: string; auth: string } }) =>
     api.post<{ ok: true }>("/api/notifications/push-subscriptions", { channel: "web", ...subscription }),
   unsubscribePush: (token: string) => api.del<{ ok: true }>("/api/notifications/push-subscriptions", { token }),
+
+  // ---- Billing ----
+  billingPlans: () => api.get<{ plans: { id: string; name: string; price: number; evalsPerDay: number; voiceMinutesPerDay: number; features: string[] }[]; current: { plan: string; status: string } }>("/api/billing/plans"),
+  billingCheckout: () => api.post<{ url: string }>("/api/billing/checkout"),
+  billingPortal: () => api.post<{ url: string }>("/api/billing/portal"),
+
+  // ---- Account / GDPR ----
+  accountExport: () => api.get<{ exportedAt: string; user: Record<string, unknown> }>("/api/account/export"),
+  accountDelete: (confirm: string) => api.post<{ message: string }>("/api/account/delete", { confirm }),
+  accountConsent: (consentType: string, granted: boolean) => api.post<{ ok: true }>("/api/account/consent", { consentType, granted }),
+  accountStats: () => api.get<{ memberSince: string; totalAnswers: number; currentStreak: number; longestStreak: number }>("/api/account/stats"),
 };
 
 /** Converts a base64url VAPID key into a Uint8Array for pushManager.subscribe. */
