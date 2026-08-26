@@ -1,8 +1,8 @@
 # Kairos - QA Testing Plan
 
-> **Version:** 1.0 | **Date:** 2026-08-26
-> **Scope:** Phases 0-3 + Wave 2 (all committed features)
-> **Automated tests:** 140/140 passing | **Typechecks:** clean (api + web)
+> **Version:** 2.0 | **Date:** 2026-08-26
+> **Scope:** Phases 0-3 + Waves 2-3 + Launch hardening (all committed features)
+> **Automated tests:** 170/170 passing | **Typechecks:** clean (api + web)
 
 ## How to run
 
@@ -14,7 +14,7 @@ pnpm docker:up
 pnpm --filter api exec vitest run
 
 # Single test file
-pnpm --filter api exec vitest run src/test/bandConfirmation.test.ts
+pnpm --filter api exec vitest run src/services/skillScoring.test.ts
 
 # Typechecks
 pnpm --filter @kairos/api typecheck
@@ -262,7 +262,7 @@ pnpm --filter @kairos/web typecheck
 
 ---
 
-## 16 - Observability (6 automated)
+## 16 - Observability (7 automated)
 
 | ID | Scenario | Steps | Expected |
 |----|----------|-------|----------|
@@ -272,6 +272,7 @@ pnpm --filter @kairos/web typecheck
 | 16.4 | Error retryable flag | 401 | retryable: false |
 | 16.5 | 404 code | Unknown route | NOT_FOUND + retryable: false |
 | 16.6 | Domain events | Eval completes | eval_completed logged |
+| 16.7 | Metrics endpoint | GET /health/metrics | API latency, worker metrics, LLM cost |
 
 ---
 
@@ -288,57 +289,167 @@ pnpm --filter @kairos/web typecheck
 
 ---
 
-## 18 - Web UI Smoke Tests (Manual)
+## 18 - Skills Taxonomy (10 automated)
+
+| ID | Scenario | Steps | Expected |
+|----|----------|-------|----------|
+| 18.1 | First evaluation creates all dimensions | updateSkillState with mock result | 10 user_skill_state rows, 10 skill_evidence rows |
+| 18.2 | Evidence linked to answer | Check skill_evidence.answerId | Linked to evaluation answer |
+| 18.3 | EMA on second eval | Two evaluations same user | Score moves toward new value (not replaced) |
+| 18.4 | Trend improving | Score goes up | trend: "improving" |
+| 18.5 | Trend stable | Score stays same | trend: "stable" |
+| 18.6 | Profile empty | User with no evals | Empty array |
+| 18.7 | Profile sorted weakest-first | User with multiple evals | Lowest score first |
+| 18.8 | Skill metadata | GET /api/skills/profile | Includes name, description, category from skills table |
+| 18.9 | Weak skills limit | GET /api/skills/weak?limit=2 | Returns at most 2 |
+| 18.10 | Weak skills default | GET /api/skills/weak | Returns 3 weakest by default |
+
+---
+
+## 19 - Band-Flip Harness (10 automated)
+
+| ID | Scenario | Steps | Expected |
+|----|----------|-------|----------|
+| 19.1 | No flip | Same eval twice | 0 flips, 0 critical flips |
+| 19.2 | Band flip detected | Strong vs needs_work | 1 flip detected, correct dimensions |
+| 19.3 | Critical flip | Strong <-> needs_work boundary | flagged as critical |
+| 19.4 | Dimension flip | One dimension changes band | dimensionFlipCount: 1 |
+| 19.5 | Build report | 6 fixture comparisons | Aggregate stats, per-dimension breakdown |
+| 19.6 | Report summary | All flips below threshold | flipRate < 15% |
+| 19.7 | Pass criteria met | Low flip rate | { passed: true } |
+| 19.8 | Fail: high flip rate | >15% flips | { passed: false, reasons includes "flip rate" } |
+| 19.9 | Fail: critical flip | strong <-> needs_work | { passed: false, reasons includes "critical" } |
+| 19.10 | Delivery 0% flip | Deterministic delivery scores | delivery dimension never flips |
+
+---
+
+## 20 - Billing & Subscription (5 automated + 6 manual)
+
+| ID | Scenario | Steps | Expected |
+|----|----------|-------|----------|
+| 20.1 | Free plan default | Register new user | Subscription row: plan=free, status=active |
+| 20.2 | Get plans | GET /api/billing/plans | Free + Pro plans, current plan shown |
+| 20.3 | Usage tracking | Submit eval | usage_tracking row incremented |
+| 20.4 | Free limit enforced | 4th eval in one day | 403 "reached daily limit" |
+| 20.5 | Checkout session | POST /api/billing/checkout (with Stripe key) | Redirect URL returned |
+
+**Manual (requires Stripe test key):**
+
+| ID | Scenario | Steps | Expected |
+|----|----------|-------|----------|
+| 20.6 | Checkout flow | Click "Upgrade to Pro" | Stripe Checkout page loads |
+| 20.7 | Checkout success | Complete Stripe payment | Redirect to /settings?billing=success, plan=pro |
+| 20.8 | Checkout cancel | Click back on Stripe | Redirect to /settings?billing=cancel, plan=free |
+| 20.9 | Webhook activation | Stripe sends checkout.session.completed | Subscription upgraded to pro |
+| 20.10 | Billing portal | Click "Manage subscription" | Stripe portal loads |
+| 20.11 | Cancel subscription | Cancel in Stripe portal | plan reverts to free on next webhook |
+
+---
+
+## 21 - GDPR Compliance (4 automated + 4 manual)
+
+| ID | Scenario | Steps | Expected |
+|----|----------|-------|----------|
+| 21.1 | Data export | GET /api/account/export | JSON with user, answers, streaks, skills, consent |
+| 21.2 | Export file download | Trigger export from web | .json file downloads |
+| 21.3 | Delete requires confirmation | POST /api/account/delete without confirm | 400 |
+| 21.4 | Delete anonymizes | POST /api/account/delete { confirm: "DELETE_MY_ACCOUNT" } | User name="[deleted]", email anonymized |
+
+**Manual:**
+
+| ID | Scenario | Steps | Expected |
+|----|----------|-------|----------|
+| 21.5 | Consent banner | Open app fresh (clear localStorage) | Banner visible at bottom |
+| 21.6 | Accept consent | Click "Accept" | Banner disappears, consent logged |
+| 21.7 | Decline consent | Click "Decline" | Banner disappears, consent logged as declined |
+| 21.8 | Account stats | Settings > Account Stats | Shows answers, streaks, member since date |
+
+---
+
+## 22 - Skill Profile UI (4 manual)
+
+| ID | Scenario | Steps | Expected |
+|----|----------|-------|----------|
+| 22.1 | Radar chart renders | Navigate to /skills | SVG with 10 axes, data polygon visible |
+| 22.2 | Score bars | View skill breakdown | Percentage fill + numeric score per dimension |
+| 22.3 | Trend badges | Skill with improving trend | Green up arrow |
+| 22.4 | Empty state | New user with no evals | "Complete some practice questions" message |
+
+---
+
+## 23 - Voice UI Hardening (5 manual)
+
+| ID | Scenario | Steps | Expected |
+|----|----------|-------|----------|
+| 23.1 | Error boundary | Force render error in Practice | Error page with reload button, not blank screen |
+| 23.2 | Mic denied | Deny mic permission | "Microphone access was denied. Allow mic permission..." |
+| 23.3 | No mic | Unplug mic before recording | "No microphone found. Please connect..." |
+| 23.4 | Mic in use | Record in another tab | "Your microphone is in use by another app..." |
+| 23.5 | Browser unsupported | Open in IE/Safari <14 | "Your browser doesn't support microphone recording" |
+
+---
+
+## 24 - Web UI Smoke Tests (Manual)
 
 > Requires: web on :5173, API on :4000
 
-### 18.1 Auth Flow
+### 24.1 Auth Flow
 
 | ID | Steps | Expected |
 |----|-------|----------|
-| 18.1.1 | Register new account | Redirect to onboarding |
-| 18.1.2 | Complete onboarding | Redirect to dashboard |
-| 18.1.3 | Login existing | Dashboard with streak |
-| 18.1.4 | Forgot password | Confirmation message |
-| 18.1.5 | Reset password | Login works with new password |
+| 24.1.1 | Register new account | Redirect to onboarding |
+| 24.1.2 | Complete onboarding | Redirect to dashboard |
+| 24.1.3 | Login existing | Dashboard with streak |
+| 24.1.4 | Forgot password | Confirmation message |
+| 24.1.5 | Reset password | Login works with new password |
 
-### 18.2 Daily Question
-
-| ID | Steps | Expected |
-|----|-------|----------|
-| 18.2.1 | Load dashboard | Question text, category, difficulty shown |
-| 18.2.2 | Type + submit answer | Status -> evaluating, live updates |
-| 18.2.3 | View result | Band, feedback, model answer displayed |
-| 18.2.4 | Already answered | Previous answer shown |
-| 18.2.5 | Streak visible | Counter on dashboard |
-| 18.2.6 | Character counter | Updates live while typing |
-
-### 18.3 Practice Mode
+### 24.2 Daily Question
 
 | ID | Steps | Expected |
 |----|-------|----------|
-| 18.3.1 | Navigate to practice | Page loads |
-| 18.3.2 | Filter by category | Only selected category |
-| 18.3.3 | Submit practice answer | Eval completes, streak unchanged |
-| 18.3.4 | Follow-up card | Shows for weak answers |
+| 24.2.1 | Load dashboard | Question text, category, difficulty shown |
+| 24.2.2 | Type + submit answer | Status -> evaluating, live updates |
+| 24.2.3 | View result | Band, feedback, model answer displayed |
+| 24.2.4 | Already answered | Previous answer shown |
+| 24.2.5 | Streak visible | Counter on dashboard |
+| 24.2.6 | Character counter | Updates live while typing |
 
-### 18.4 Voice Mode
-
-| ID | Steps | Expected |
-|----|-------|----------|
-| 18.4.1 | Toggle to voice | Mic button visible |
-| 18.4.2 | Record audio | Timer counts up |
-| 18.4.3 | Submit recording | Upload + processing stages shown |
-| 18.4.4 | View voice result | Bands + delivery metrics |
-
-### 18.5 History & Leaderboard
+### 24.3 Practice Mode
 
 | ID | Steps | Expected |
 |----|-------|----------|
-| 18.5.1 | View history | Past answers with bands + dates |
-| 18.5.2 | View answer detail | Full evaluation breakdown |
-| 18.5.3 | Leaderboard | Ranked list with scores |
-| 18.5.4 | Weekly summary | Stats card on dashboard |
+| 24.3.1 | Navigate to practice | Page loads |
+| 24.3.2 | Filter by category | Only selected category |
+| 24.3.3 | Submit practice answer | Eval completes, streak unchanged |
+| 24.3.4 | Follow-up card | Shows for weak answers |
+
+### 24.4 Voice Mode
+
+| ID | Steps | Expected |
+|----|-------|----------|
+| 24.4.1 | Toggle to voice | Mic button visible |
+| 24.4.2 | Record audio | Timer counts up |
+| 24.4.3 | Submit recording | Upload + processing stages shown |
+| 24.4.4 | View voice result | Bands + delivery metrics |
+
+### 24.5 History & Leaderboard
+
+| ID | Steps | Expected |
+|----|-------|----------|
+| 24.5.1 | View history | Past answers with bands + dates |
+| 24.5.2 | View answer detail | Full evaluation breakdown |
+| 24.5.3 | Leaderboard | Ranked list with scores |
+| 24.5.4 | Weekly summary | Stats card on dashboard |
+
+### 24.6 Navigation & Layout
+
+| ID | Steps | Expected |
+|----|-------|----------|
+| 24.6.1 | Top nav links | Today, Practice, Skills, Streak, History, Settings visible |
+| 24.6.2 | Active link | Current page nav item highlighted |
+| 24.6.3 | Dark mode toggle | Theme switches, persists on reload |
+| 24.6.4 | Consent banner | Appears on first visit, dismisses on accept/decline |
+| 24.6.5 | Settings page | Theme, notifications, password, data export, delete sections |
 
 ---
 
@@ -361,9 +472,16 @@ pnpm --filter @kairos/web typecheck
 | Labeling Queue | 6 | 4 | 10 |
 | TPO Dashboard | 6 | 4 | 10 |
 | College Tenancy | 6 | 0 | 6 |
-| Observability | 6 | 0 | 6 |
+| Observability | 7 | 0 | 7 |
 | Content Pipeline | 6 | 0 | 6 |
-| **Total** | **97** | **31** | **128** |
+| Skills Taxonomy | 10 | 0 | 10 |
+| Band-Flip Harness | 10 | 0 | 10 |
+| Billing & Subscription | 5 | 6 | 11 |
+| GDPR Compliance | 4 | 4 | 8 |
+| Skill Profile UI | 0 | 4 | 4 |
+| Voice UI Hardening | 0 | 5 | 5 |
+| Web UI Smoke Tests | 0 | 25 | 25 |
+| **Total** | **131** | **70** | **201** |
 
 ### Known Issues
 
@@ -371,12 +489,41 @@ pnpm --filter @kairos/web typecheck
 - Mock provider in test env returns eval-shaped JSON only. Rubric/modelAnswer/followUp services return null gracefully when mock is used.
 - Labeling queue UI (post-eval "Was this fair?" prompt) not yet wired into web frontend. API is complete.
 - TPO dashboard is API-only. No web UI yet.
+- Stripe billing requires real `STRIPE_SECRET_KEY` + `STRIPE_PRO_PRICE_ID` in production env. Checkout flow untested with live Stripe.
+- Billing page shows "Manage subscription" for Pro users but Stripe portal URL requires active Stripe subscription.
+- PWA manifest not yet created (no install prompt, no offline support).
+- Mobile Expo app exists but untested on real devices.
+- Load testing not performed. Recommended before >100 concurrent users.
 
 ### Release Criteria (Build Plan Gates)
 
-| # | Gate | Threshold |
-|---|------|-----------|
-| 6 | Human-AI band agreement on calibration set | >=85% |
-| 7 | Blind re-score band-flip | <=15% |
-| 8 | Student "feedback was useful" rating | >=4/5 avg, >=60% responding |
-| 9 | TPO engagement | Dashboard logins >=50% of pilot weeks |
+| # | Gate | Threshold | Status |
+|---|------|-----------|--------|
+| 6 | Human-AI band agreement on calibration set | >=85% | Band-flip harness built, needs real LLM run |
+| 7 | Blind re-score band-flip | <=15% | Harness + 6 fixtures, pass criteria enforced |
+| 8 | Student "feedback was useful" rating | >=4/5 avg, >=60% responding | Not started |
+| 9 | TPO engagement | Dashboard logins >=50% of pilot weeks | API complete, no UI |
+
+### Launch Readiness Checklist
+
+| # | Item | Status |
+|---|------|--------|
+| 1 | Core evaluation pipeline | Done |
+| 2 | Voice submission + ASR | Done |
+| 3 | Adaptive question selection | Done |
+| 4 | Skills tracking (10 dimensions) | Done |
+| 5 | Band-flip quality harness | Done |
+| 6 | Subscription billing (Stripe) | Done (needs live keys) |
+| 7 | Onboarding flow | Done |
+| 8 | Email verification + password reset | Done |
+| 9 | Skill profile UI (radar chart) | Done |
+| 10 | GDPR data export + deletion | Done |
+| 11 | Consent logging | Done |
+| 12 | Voice UI error handling | Done |
+| 13 | Usage limits (free tier) | Done |
+| 14 | Observability (metrics, latency) | Done |
+| 15 | Production Docker deployment | Done |
+| 16 | Set Stripe live keys | Pending |
+| 17 | Load testing | Pending |
+| 18 | PWA manifest | Pending |
+| 19 | Email templates (branded HTML) | Pending |
