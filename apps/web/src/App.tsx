@@ -7,6 +7,7 @@ import Billing from "./pages/Billing";
 import { Dashboard } from "./pages/Dashboard";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { History } from "./pages/History";
+import { InviteAccept } from "./pages/InviteAccept";
 import { Landing } from "./pages/Landing";
 import { Leaderboard } from "./pages/Leaderboard";
 import { Login } from "./pages/Login";
@@ -38,6 +39,7 @@ export function App() {
       <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/terms" element={<TermsOfService />} />
       <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route path="/invite/:code" element={<InviteAccept />} />
 
       <Route
         element={

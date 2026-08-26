@@ -53,6 +53,14 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     const db = getDb();
     const input = req.body as RegisterInput;
+
+    // Honeypot: bots fill hidden fields, humans don't
+    if ((req.body as Record<string, unknown>)._website || (req.body as Record<string, unknown>)._email_confirm) {
+      // Silently return a fake success so bots don't retry with different params
+      res.status(201).json({ ok: true });
+      return;
+    }
+
     const result = await authService.register(db, {
       name: input.name,
       email: input.email,

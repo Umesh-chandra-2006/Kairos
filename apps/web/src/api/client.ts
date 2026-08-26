@@ -175,7 +175,7 @@ export const api = {
   del: <T>(path: string, body?: unknown) => request<T>(path, { method: "DELETE", body }),
 
   // ---- Auth ----
-  register: (input: { name: string; email: string; password: string }) =>
+  register: (input: { name: string; email: string; password: string; referralCode?: string }) =>
     api.post<AuthResponse>("/api/auth/register", { ...input, device: "web" }),
   login: (input: { email: string; password: string }) =>
     api.post<AuthResponse>("/api/auth/login", { ...input, device: "web" }),

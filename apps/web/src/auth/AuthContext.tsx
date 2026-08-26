@@ -7,7 +7,7 @@ interface AuthContextValue {
   user: PublicUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string, referralCode?: string) => Promise<void>;
   logout: () => Promise<void>;
   completeOnboarding: (input: OnboardingInput) => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -54,8 +54,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const register = useCallback(
-    async (name: string, email: string, password: string) => {
-      const res = await api.register({ name, email, password });
+    async (name: string, email: string, password: string, referralCode?: string) => {
+      const res = await api.register({ name, email, password, referralCode });
       setAccessToken(res.accessToken);
       setUser(res.user);
     },

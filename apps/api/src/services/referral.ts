@@ -1,6 +1,6 @@
 import { eq, and, count } from "drizzle-orm";
 import { getDb } from "@kairos/db";
-import { referralCodes, referralEvents, users } from "@kairos/db/schema";
+import { referralCodes, referralEvents, subscriptions, users } from "@kairos/db/schema";
 import { logger } from "../lib/logger.js";
 import crypto from "crypto";
 
@@ -11,6 +11,47 @@ const MAX_USES = 10;
 
 function generateCode(): string {
   return crypto.randomBytes(4).toString("hex").toUpperCase();
+}
+
+function addDays(date: Date, days: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+/**
+ * Grant Pro days to a user by extending their currentPeriodEnd.
+ * If they have no subscription row, create one with a future end date.
+ */
+async function grantProDays(userId: number, days: number): Promise<void> {
+  const db = getDb();
+  const now = new Date();
+  const existing = await db.query.subscriptions.findFirst({
+    where: eq(subscriptions.userId, userId),
+  });
+
+  if (existing) {
+    const base = existing.currentPeriodEnd && existing.currentPeriodEnd > now
+      ? existing.currentPeriodEnd
+      : now;
+    await db
+      .update(subscriptions)
+      .set({
+        plan: "pro",
+        status: "active",
+        currentPeriodEnd: addDays(base, days),
+      })
+      .where(eq(subscriptions.id, existing.id));
+  } else {
+    await db.insert(subscriptions).values({
+      userId,
+      plan: "pro",
+      status: "active",
+      currentPeriodEnd: addDays(now, days),
+    });
+  }
+
+  logger.info({ userId, days }, "referral pro days granted");
 }
 
 export async function getOrCreateReferralCode(userId: number): Promise<string> {
@@ -63,6 +104,10 @@ export async function applyReferralCode(
   await db.update(referralCodes)
     .set({ useCount: referralRow.useCount + 1 })
     .where(eq(referralCodes.id, referralRow.id));
+
+  // Grant actual Pro days to both parties
+  await grantProDays(referredUserId, REFERRED_REWARD_DAYS);
+  await grantProDays(referralRow.userId, REFERRER_REWARD_DAYS);
 
   logger.info({ referrerUserId: referralRow.userId, referredUserId, code }, "referral applied");
   return { ok: true };

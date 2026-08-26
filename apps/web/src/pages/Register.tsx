@@ -6,6 +6,8 @@ import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { AuthShell, ErrorBanner, Field } from "../components/forms";
 
+const REFERRAL_STORAGE_KEY = "kairos_referral_code";
+
 function errorsFromApi(err: unknown): RegisterFormErrors {
   if (err instanceof ApiError) {
     const mapped: RegisterFormErrors = {};
@@ -39,7 +41,9 @@ export function Register() {
     if (Object.keys(errors).length > 0) return;
     setBusy(true);
     try {
-      await register(name.trim(), email.trim(), password);
+      const referralCode = localStorage.getItem(REFERRAL_STORAGE_KEY) || undefined;
+      await register(name.trim(), email.trim(), password, referralCode);
+      localStorage.removeItem(REFERRAL_STORAGE_KEY);
       navigate("/");
     } catch (err) {
       if (err instanceof ApiError) {
@@ -81,6 +85,11 @@ export function Register() {
         <button className="btn btn-primary" disabled={busy} type="submit">
           {busy ? "Creating…" : "Create account"}
         </button>
+        {/* Honeypot fields — hidden from humans, bots auto-fill them */}
+        <div style={{ position: "absolute", left: "-9999px" }} aria-hidden="true">
+          <input type="text" name="_website" tabIndex={-1} autoComplete="off" />
+          <input type="text" name="_email_confirm" tabIndex={-1} autoComplete="off" />
+        </div>
       </form>
       <div className="link-row">
         <Link to="/login">Already have an account?</Link>
