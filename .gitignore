@@ -19,6 +19,7 @@ logs/
 
 # Test coverage
 coverage/
+test-output*
 
 # OS / IDE
 .DS_Store
