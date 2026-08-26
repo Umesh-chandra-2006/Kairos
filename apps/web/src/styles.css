@@ -1315,3 +1315,25 @@ select:focus,
 .share-card-label { font-weight: 600; }
 .share-actions { display: flex; gap: 8px; padding: 16px; justify-content: center; }
 
+/* ---- Referral ---- */
+
+.referral-rewards { display: flex; gap: 16px; justify-content: center; margin-bottom: 24px; }
+.referral-reward { text-align: center; }
+.reward-value { display: block; font-size: 24px; font-weight: 700; color: var(--primary); }
+.reward-label { font-size: 12px; color: var(--muted); }
+
+.referral-link-box {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--surface-2); margin-bottom: 20px;
+}
+.referral-link {
+  flex: 1; font-size: 13px; font-family: monospace; word-break: break-all;
+  color: var(--text);
+}
+
+.referral-stats-row { display: flex; gap: 20px; justify-content: center; }
+.referral-stat { text-align: center; }
+.referral-stat-value { display: block; font-size: 20px; font-weight: 700; }
+.referral-stat-label { font-size: 12px; color: var(--muted); }
+

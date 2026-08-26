@@ -39,6 +39,9 @@ export function Layout() {
           <NavLink to="/history" className={linkClass}>
             History
           </NavLink>
+          <NavLink to="/referral" className={linkClass}>
+            Invite
+          </NavLink>
           <NavLink to="/settings" className={linkClass}>
             Settings
           </NavLink>

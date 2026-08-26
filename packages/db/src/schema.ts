@@ -789,3 +789,54 @@ export const dataDeletions = mysqlTable(
 
 export type DataDeletion = typeof dataDeletions.$inferSelect;
 export type InsertDataDeletion = typeof dataDeletions.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// referral_codes — unique referral code per user (launch feature)
+// ---------------------------------------------------------------------------
+export const referralCodes = mysqlTable(
+  "referral_codes",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    code: varchar("code", { length: 16 }).notNull(),
+    maxUses: int("maxUses").default(10).notNull(),
+    useCount: int("useCount").default(0).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("referral_codes_user_idx").on(t.userId),
+    uniqueIndex("referral_codes_code_idx").on(t.code),
+  ],
+);
+
+export type ReferralCode = typeof referralCodes.$inferSelect;
+export type InsertReferralCode = typeof referralCodes.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// referral_events — tracks who invited whom and rewards granted
+// ---------------------------------------------------------------------------
+export const referralEvents = mysqlTable(
+  "referral_events",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    referrerUserId: int("referrerUserId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    referredUserId: int("referredUserId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    referralCode: varchar("referralCode", { length: 16 }).notNull(),
+    referrerRewardDays: int("referrerRewardDays").default(7).notNull(),
+    referredRewardDays: int("referredRewardDays").default(3).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [
+    index("referral_events_referrer_idx").on(t.referrerUserId),
+    index("referral_events_referred_idx").on(t.referredUserId),
+  ],
+);
+
+export type ReferralEvent = typeof referralEvents.$inferSelect;
+export type InsertReferralEvent = typeof referralEvents.$inferInsert;

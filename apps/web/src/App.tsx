@@ -12,6 +12,7 @@ import { Leaderboard } from "./pages/Leaderboard";
 import { Login } from "./pages/Login";
 import { Onboarding } from "./pages/Onboarding";
 import { Practice } from "./pages/Practice";
+import { Referral } from "./pages/Referral";
 import { Register } from "./pages/Register";
 import { ResetPassword } from "./pages/ResetPassword";
 import { Settings } from "./pages/Settings";
@@ -51,6 +52,7 @@ export function App() {
         <Route path="/history/:id" element={<AnswerDetail />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/billing" element={<Billing />} />
+        <Route path="/referral" element={<Referral />} />
       </Route>
 
       <Route path="*" element={<Landing />} />

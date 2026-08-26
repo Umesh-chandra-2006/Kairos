@@ -11,6 +11,7 @@ export const registerSchema = z.object({
     .regex(/[a-z]/, "Password must contain a lowercase letter")
     .regex(/[A-Z]/, "Password must contain an uppercase letter")
     .regex(/[0-9]/, "Password must contain a number"),
+  referralCode: z.string().min(4).max(16).optional(),
   device: z.enum(["web", "mobile"]).optional().default("web"),
 });
 

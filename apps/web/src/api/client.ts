@@ -269,6 +269,10 @@ export const api = {
   accountDelete: (confirm: string) => api.post<{ message: string }>("/api/account/delete", { confirm }),
   accountConsent: (consentType: string, granted: boolean) => api.post<{ ok: true }>("/api/account/consent", { consentType, granted }),
   accountStats: () => api.get<{ memberSince: string; totalAnswers: number; currentStreak: number; longestStreak: number }>("/api/account/stats"),
+
+  // ---- Referral ----
+  referralStats: () => api.get<{ code: string; totalReferred: number; rewardDays: number; maxUses: number; inviteUrl: string }>("/api/referral"),
+  applyReferral: (code: string) => api.post<{ ok: true }>("/api/referral/apply", { code }),
 };
 
 /** Converts a base64url VAPID key into a Uint8Array for pushManager.subscribe. */

@@ -59,6 +59,15 @@ authRouter.post(
       password: input.password,
     });
     sendAuthResult(res, result, (input as RegisterInput & { device?: Device }).device ?? "web");
+
+    if (result.user && input.referralCode) {
+      try {
+        const { applyReferralCode } = await import("../services/referral.js");
+        await applyReferralCode(result.user.id, input.referralCode);
+      } catch {
+        /* referral is best-effort — don't fail registration */
+      }
+    }
   }),
 );
 
