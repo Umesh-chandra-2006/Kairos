@@ -14,6 +14,7 @@ import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { generalRateLimit } from "./middleware/rateLimit";
 import { apiRouter } from "./routes";
 import { recordApiLatency } from "./lib/obs";
+import { sentryErrorHandler } from "./lib/sentry";
 
 const webDist = path.join(getProjectRoot(), "apps", "web", "dist");
 
@@ -93,6 +94,9 @@ export function createApp(): Express {
   }
 
   app.use(notFoundHandler);
+  // Sentry error handler must be before custom errorHandler
+  const sentrySetup = sentryErrorHandler();
+  sentrySetup(app);
   app.use(errorHandler);
 
   return app;

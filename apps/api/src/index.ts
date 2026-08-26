@@ -2,6 +2,7 @@ import { getEnv, loadEnv } from "@kairos/config";
 import { closeDb } from "@kairos/db";
 import { closeCache } from "./lib/cache";
 import { logger } from "./lib/logger";
+import { initSentry } from "./lib/sentry";
 import { initRuntime } from "./queue";
 import { registerEvalWorker } from "./workers/evalWorker";
 import { registerScheduler } from "./workers/scheduler";
@@ -9,6 +10,7 @@ import { createApp } from "./app";
 
 async function main(): Promise<void> {
   const env = loadEnv();
+  initSentry();
   const runtime = await initRuntime();
   registerEvalWorker();
   registerScheduler();

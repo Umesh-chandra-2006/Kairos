@@ -72,6 +72,7 @@ const envSchema = z.object({
   RAZORPAY_KEY_SECRET: z.string().optional(),
   RAZORPAY_PLAN_ID: z.string().optional(),
   RAZORPAY_WEBHOOK_SECRET: z.string().optional(),
+  SENTRY_DSN: z.string().optional(),
 })
   .superRefine((data, ctx) => {
     if (data.NODE_ENV !== "production") return;

@@ -20,6 +20,7 @@
     "@kairos/db": "workspace:*",
     "@kairos/email": "workspace:*",
     "@kairos/shared": "workspace:*",
+    "@sentry/node": "^10.71.0",
     "bcryptjs": "^3.0.2",
     "bullmq": "^5.41.6",
     "cookie-parser": "^1.4.7",
