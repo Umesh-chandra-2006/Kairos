@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useTheme } from "../theme/ThemeProvider";
@@ -13,6 +14,7 @@ function initialsOf(name: string | null | undefined, email: string | undefined):
 export function Layout() {
   const { user, logout } = useAuth();
   const { resolved, toggle } = useTheme();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `nav-link${isActive ? " nav-link-active" : ""}`;
@@ -23,26 +25,26 @@ export function Layout() {
         <Link to="/" className="brand">
           Kairos
         </Link>
-        <nav className="nav">
-          <NavLink to="/" end className={linkClass}>
+        <nav className={`nav${menuOpen ? " nav-open" : ""}`}>
+          <NavLink to="/" end className={linkClass} onClick={() => setMenuOpen(false)}>
             Today
           </NavLink>
-          <NavLink to="/practice" className={linkClass}>
+          <NavLink to="/practice" className={linkClass} onClick={() => setMenuOpen(false)}>
             Practice
           </NavLink>
-          <NavLink to="/skills" className={linkClass}>
+          <NavLink to="/skills" className={linkClass} onClick={() => setMenuOpen(false)}>
             Skills
           </NavLink>
-          <NavLink to="/streak" className={linkClass}>
+          <NavLink to="/streak" className={linkClass} onClick={() => setMenuOpen(false)}>
             Streak
           </NavLink>
-          <NavLink to="/history" className={linkClass}>
+          <NavLink to="/history" className={linkClass} onClick={() => setMenuOpen(false)}>
             History
           </NavLink>
-          <NavLink to="/referral" className={linkClass}>
+          <NavLink to="/referral" className={linkClass} onClick={() => setMenuOpen(false)}>
             Invite
           </NavLink>
-          <NavLink to="/settings" className={linkClass}>
+          <NavLink to="/settings" className={linkClass} onClick={() => setMenuOpen(false)}>
             Settings
           </NavLink>
         </nav>
@@ -62,11 +64,19 @@ export function Layout() {
           <button className="btn btn-ghost" onClick={() => void logout()}>
             Log out
           </button>
+          <button
+            className="icon-btn hamburger"
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label="Toggle menu"
+          >
+            {menuOpen ? "✕" : "☰"}
+          </button>
         </div>
       </header>
       <main className="content">
         <Outlet />
       </main>
+      {menuOpen && <div className="nav-overlay" onClick={() => setMenuOpen(false)} />}
     </div>
   );
 }

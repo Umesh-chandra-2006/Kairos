@@ -83,7 +83,11 @@ export function Landing() {
 
       <footer className="landing-footer">
         <span>Kairos &copy; {new Date().getFullYear()}</span>
-        <span>Made for students, by students.</span>
+        <div className="landing-footer-links">
+          <a href="/terms">Terms</a>
+          <a href="/privacy">Privacy</a>
+          <a href="mailto:support@kairos.app">Support</a>
+        </div>
       </footer>
     </div>
   );

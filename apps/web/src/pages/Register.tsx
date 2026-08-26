@@ -25,6 +25,7 @@ export function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [agreeToS, setAgreeToS] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<RegisterFormErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -33,6 +34,7 @@ export function Register() {
     e.preventDefault();
     setError(null);
     const errors = validateRegisterForm({ name, email, password, confirm });
+    if (!agreeToS) errors.confirm = "You must agree to the Terms of Service";
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
     setBusy(true);
@@ -72,6 +74,10 @@ export function Register() {
         <Field label="Confirm password" error={fieldErrors.confirm}>
           <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" />
         </Field>
+        <label className="checkbox-row">
+          <input type="checkbox" checked={agreeToS} onChange={(e) => setAgreeToS(e.target.checked)} />
+          <span>I agree to the <Link to="/terms">Terms of Service</Link> and <Link to="/privacy">Privacy Policy</Link></span>
+        </label>
         <button className="btn btn-primary" disabled={busy} type="submit">
           {busy ? "Creating…" : "Create account"}
         </button>

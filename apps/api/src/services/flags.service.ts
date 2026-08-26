@@ -80,7 +80,7 @@ export async function isEnabled(
     // College-specific row wins; fall back to the environment-wide row.
     entry =
       (collegeId !== null ? await loadRow(db, flag, envScope, collegeId) : null) ??
-      (await loadRow(db, flag, envScope, null)) ?? { enabled: false, rolloutPercent: 100, loadedAt: Date.now() };
+      (await loadRow(db, flag, envScope, null)) ?? { enabled: true, rolloutPercent: 100, loadedAt: Date.now() };
     cache.set(cacheKey, entry);
   }
 

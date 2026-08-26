@@ -37,7 +37,7 @@ export function ConsentBanner() {
     <div className="consent-banner">
       <p>
         We use cookies to keep you logged in and improve your experience. By continuing, you agree to our use of
-        essential cookies. Optional analytics help us improve Kairos.
+        essential cookies. See our <a href="/privacy">Privacy Policy</a> for details.
       </p>
       <button className="btn btn-primary" onClick={() => void accept()}>
         Accept

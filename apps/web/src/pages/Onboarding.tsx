@@ -85,6 +85,7 @@ export function Onboarding() {
             </div>
           </div>
           <button className="btn btn-primary" onClick={next}>Get started</button>
+          <button className="btn btn-ghost" onClick={onSubmit} style={{ marginTop: 8 }}>Skip for now</button>
           {user?.name && <p className="onboarding-greeting">Signed in as {user.name}</p>}
         </div>
       </div>

@@ -12,12 +12,14 @@ import { Leaderboard } from "./pages/Leaderboard";
 import { Login } from "./pages/Login";
 import { Onboarding } from "./pages/Onboarding";
 import { Practice } from "./pages/Practice";
+import { PrivacyPolicy } from "./pages/PrivacyPolicy";
 import { Referral } from "./pages/Referral";
 import { Register } from "./pages/Register";
 import { ResetPassword } from "./pages/ResetPassword";
 import { Settings } from "./pages/Settings";
 import { SkillProfile } from "./pages/SkillProfile";
 import { Streak } from "./pages/Streak";
+import { TermsOfService } from "./pages/TermsOfService";
 import { VerifyEmail } from "./pages/VerifyEmail";
 
 export function App() {
@@ -34,6 +36,8 @@ export function App() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="/terms" element={<TermsOfService />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
 
       <Route
         element={

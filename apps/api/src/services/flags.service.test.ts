@@ -30,9 +30,9 @@ afterEach(async () => {
 });
 
 describe("feature flags", () => {
-  it("defaults to disabled when no rows exist", async () => {
-    expect(await isEnabled("voice_v2")).toBe(false);
-    // Unknown keys are also disabled (type-level safety + runtime guard).
+  it("defaults to enabled when no rows exist", async () => {
+    expect(await isEnabled("voice_v2")).toBe(true);
+    // Unknown keys are always disabled (runtime guard).
     expect(await isEnabled("nonexistent" as never)).toBe(false);
   });
 
@@ -43,6 +43,8 @@ describe("feature flags", () => {
   });
 
   it("envScope isolates environments", async () => {
+    // Explicitly disable for test to verify production row doesn't leak in
+    await setFlag("voice_v2", { envScope: "test", enabled: false });
     await setFlag("voice_v2", { envScope: "production", enabled: true });
     invalidateFlagCache();
     // Tests run under NODE_ENV=test; a production-only row must not apply.

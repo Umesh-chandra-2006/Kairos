@@ -116,6 +116,7 @@ export const questionService = {
   /**
    * Active question for practice mode, optionally filtered by category.
    * When `skill_engine` is enabled, picks at the user's skill level.
+   * Spaced repetition reviews are mixed into the pool when due.
    */
   async practice(db: DB, category?: string, userId?: number): Promise<Question> {
     const conditions = [eq(questions.isActive, true)];
@@ -125,6 +126,17 @@ export const questionService = {
     if (rows.length === 0) throw AppError.notFound("No questions found for this category");
 
     const useAdaptive = userId !== undefined && (await isEnabled("skill_engine", { userId, db }));
+
+    // Mix in due spaced-repetition reviews
+    if (userId !== undefined) {
+      const { mixReviewsIntoPool } = await import("./spacedRepetition.js");
+      const mixed = await mixReviewsIntoPool(db, userId, rows);
+      if (mixed.length > 0 && mixed[0]!.isReview) {
+        const reviewRow = rows.find((r) => r.id === mixed[0]!.questionId);
+        if (reviewRow) return toQuestion(reviewRow);
+      }
+    }
+
     if (useAdaptive && userId !== undefined) {
       const profile = await computeSkillProfile(db, userId);
       return toQuestion(pickAdaptiveQuestion(rows, profile, category));
