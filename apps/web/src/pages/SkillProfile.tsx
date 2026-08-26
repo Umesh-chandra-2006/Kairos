@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import { ErrorBanner } from "../components/forms";
+import { ShareCard } from "../components/ShareCard";
 
 interface SkillDimension {
   skillId: string;
@@ -102,6 +103,8 @@ export function SkillProfile() {
   const [skills, setSkills] = useState<SkillDimension[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [streak, setStreak] = useState(0);
+  const [userName, setUserName] = useState("");
 
   useEffect(() => {
     api
@@ -109,6 +112,8 @@ export function SkillProfile() {
       .then(({ skills: s }) => setSkills(s))
       .catch((err) => setError(err instanceof Error ? err.message : "Could not load skill profile"))
       .finally(() => setLoading(false));
+    api.me().then(({ user }) => { setUserName(user.name ?? ""); }).catch(() => {});
+    api.streak().then(({ streak: s }) => setStreak(s.current)).catch(() => {});
   }, []);
 
   if (loading) return <div className="card"><span className="spinner" /> Loading skill profile…</div>;
@@ -143,6 +148,8 @@ export function SkillProfile() {
           ))}
         </div>
       </div>
+
+      <ShareCard name={userName} streak={streak} skills={skills} />
     </div>
   );
 }

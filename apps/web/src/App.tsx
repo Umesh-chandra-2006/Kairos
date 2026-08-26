@@ -3,9 +3,11 @@ import { useAuth } from "./auth/AuthContext";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AnswerDetail } from "./pages/AnswerDetail";
+import Billing from "./pages/Billing";
 import { Dashboard } from "./pages/Dashboard";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { History } from "./pages/History";
+import { Landing } from "./pages/Landing";
 import { Leaderboard } from "./pages/Leaderboard";
 import { Login } from "./pages/Login";
 import { Onboarding } from "./pages/Onboarding";
@@ -48,9 +50,10 @@ export function App() {
         <Route path="/history" element={<History />} />
         <Route path="/history/:id" element={<AnswerDetail />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/billing" element={<Billing />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Landing />} />
     </Routes>
   );
 }

@@ -1,11 +1,64 @@
-self.addEventListener("install", () => self.skipWaiting());
+const CACHE_NAME = "kairos-shell-v1";
+const STATIC_ASSETS = [
+  "/",
+  "/index.html",
+  "/manifest.json",
+  "/icons/icon.svg",
+];
 
-self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+// Install: cache app shell
+self.addEventListener("install", (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)).then(() => self.skipWaiting()),
+  );
 });
 
+// Activate: clean old caches
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim()),
+  );
+});
+
+// Fetch: network-first for API, cache-first for static
+self.addEventListener("fetch", (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // Skip non-GET, skip API and auth
+  if (request.method !== "GET") return;
+  if (url.pathname.startsWith("/api/")) return;
+  if (url.pathname === "/sw.js") return;
+
+  // Cache-first for same-origin static assets
+  if (url.origin === self.location.origin) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        const fetched = fetch(request)
+          .then((response) => {
+            if (response.ok) {
+              const clone = response.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            }
+            return response;
+          })
+          .catch(() => cached);
+        return cached || fetched;
+      }),
+    );
+    return;
+  }
+
+  // Network-only for cross-origin (CDN, etc.)
+  event.respondWith(fetch(request));
+});
+
+// Push notification
 self.addEventListener("push", (event) => {
-  let data: { title?: string; body?: string; data?: { url?: string } } = {};
+  let data = {};
   try {
     data = event.data ? event.data.json() : {};
   } catch {
@@ -14,10 +67,13 @@ self.addEventListener("push", (event) => {
   const options = {
     body: data.body ?? "",
     data: { url: data.data?.url ?? "/" },
+    icon: "/icons/icon.svg",
+    badge: "/icons/icon.svg",
   };
   event.waitUntil(self.registration.showNotification(data.title ?? "Kairos", options));
 });
 
+// Notification click
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url = event.notification.data?.url ?? "/";
