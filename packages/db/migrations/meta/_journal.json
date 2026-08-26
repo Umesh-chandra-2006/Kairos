@@ -85,6 +85,13 @@
       "when": 1787900000000,
       "tag": "0011_billing_and_gdpr",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "5",
+      "when": 1787950000000,
+      "tag": "0012_stripe_to_razorpay",
+      "breakpoints": true
     }
   ]
 }

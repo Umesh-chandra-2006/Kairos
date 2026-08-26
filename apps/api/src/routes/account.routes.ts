@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Router as RouterType } from "express";
 import { getDb } from "@kairos/db";
 import {
   users,
@@ -16,7 +16,7 @@ import { AppError } from "../lib/http";
 import { logger } from "../lib/logger";
 import type { Request, Response, NextFunction } from "express";
 
-export const accountRouter = Router();
+export const accountRouter: RouterType = Router();
 
 // --- GDPR: Export all user data ---
 

@@ -681,7 +681,7 @@ export type SkillEvidence = typeof skillEvidence.$inferSelect;
 export type InsertSkillEvidence = typeof skillEvidence.$inferInsert;
 
 // ---------------------------------------------------------------------------
-// subscriptions — Stripe subscription state per user (build-plan launch)
+// subscriptions — subscription state per user (Razorpay)
 // One row per user; plan = 'free' | 'pro' | 'team'.
 // ---------------------------------------------------------------------------
 export const SUBSCRIPTION_PLAN_ENUM = ["free", "pro", "team"] as const;
@@ -694,8 +694,8 @@ export const subscriptions = mysqlTable(
     userId: int("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    stripeCustomerId: varchar("stripeCustomerId", { length: 128 }),
-    stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 128 }),
+    paymentCustomerId: varchar("paymentCustomerId", { length: 128 }),
+    paymentSubscriptionId: varchar("paymentSubscriptionId", { length: 128 }),
     plan: varchar("plan", { length: 32 }).default("free").notNull(),
     status: varchar("status", { length: 32 }).default("active").notNull(),
     currentPeriodStart: timestamp("currentPeriodStart"),
@@ -706,8 +706,8 @@ export const subscriptions = mysqlTable(
   },
   (t) => [
     uniqueIndex("subscriptions_user_idx").on(t.userId),
-    uniqueIndex("subscriptions_stripe_customer_idx").on(t.stripeCustomerId),
-    uniqueIndex("subscriptions_stripe_sub_idx").on(t.stripeSubscriptionId),
+    uniqueIndex("subscriptions_customer_idx").on(t.paymentCustomerId),
+    uniqueIndex("subscriptions_sub_idx").on(t.paymentSubscriptionId),
   ],
 );
 

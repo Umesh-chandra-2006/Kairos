@@ -3,7 +3,7 @@ import { accountRouter } from "./account.routes";
 import { answersRouter } from "./answers.routes";
 import { analyticsRouter } from "./analytics.routes";
 import { authRouter } from "./auth.routes";
-import { billingRouter } from "./billing.routes";
+import billingRouter from "./billing.routes";
 import { evaluationsRouter } from "./evaluations.routes";
 import { flagsRouter } from "./flags.routes";
 import { healthRouter } from "./health.routes";

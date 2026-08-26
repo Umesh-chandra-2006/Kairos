@@ -260,9 +260,9 @@ export const api = {
   unsubscribePush: (token: string) => api.del<{ ok: true }>("/api/notifications/push-subscriptions", { token }),
 
   // ---- Billing ----
-  billingPlans: () => api.get<{ plans: { id: string; name: string; price: number; evalsPerDay: number; voiceMinutesPerDay: number; features: string[] }[]; current: { plan: string; status: string } }>("/api/billing/plans"),
-  billingCheckout: () => api.post<{ url: string }>("/api/billing/checkout"),
-  billingPortal: () => api.post<{ url: string }>("/api/billing/portal"),
+  getPlans: () => api.get<{ plans: { id: string; name: string; price: number; currency?: string; interval: string; features: string[] }[]; currentPlan: string; currentPeriodEnd: string | null; cancelAtPeriodEnd: boolean }>("/api/billing/plans"),
+  createCheckout: () => api.post<{ subscriptionId: string; shortUrl: string }>("/api/billing/checkout"),
+  cancelPlan: () => api.post<{ ok: true; plan: string }>("/api/billing/cancel"),
 
   // ---- Account / GDPR ----
   accountExport: () => api.get<{ exportedAt: string; user: Record<string, unknown> }>("/api/account/export"),

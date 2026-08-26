@@ -94,7 +94,7 @@ function TrendBadge({ trend }: { trend: string }) {
     declining: { icon: "↓", cls: "trend-down" },
     stable: { icon: "→", cls: "trend-stable" },
   };
-  const { icon, cls } = map[trend] ?? map.stable;
+  const { icon, cls } = map[trend] ?? map.stable!;
   return <span className={`trend-badge ${cls}`}>{icon}</span>;
 }
 

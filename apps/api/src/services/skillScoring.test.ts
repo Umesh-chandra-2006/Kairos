@@ -9,7 +9,7 @@ const TEST_USER_ID = 999_001;
 
 function makeEvaluation(overrides: Partial<EvaluationResult> = {}): EvaluationResult {
   return {
-    contractVersion: 2,
+    contractVersion: 1,
     answerId: 1,
     kind: "initial",
     followUpOf: null,
@@ -91,8 +91,8 @@ describe("skillScoring", () => {
         .where(eq(skillEvidence.userId, TEST_USER_ID));
 
       expect(evidence).toHaveLength(10);
-      expect(evidence[0].score).toBeGreaterThanOrEqual(0);
-      expect(evidence[0].score).toBeLessThanOrEqual(10);
+      expect(evidence[0]!.score).toBeGreaterThanOrEqual(0);
+      expect(evidence[0]!.score).toBeLessThanOrEqual(10);
     });
 
     it("applies EMA on second evaluation (score moves toward new value)", async () => {
@@ -105,7 +105,7 @@ describe("skillScoring", () => {
         .from(userSkillState)
         .where(and(eq(userSkillState.userId, TEST_USER_ID), eq(userSkillState.skillId, "technical_explanation")))
         .limit(1);
-      const scoreBefore = before[0].score;
+      const scoreBefore = before[0]!.score;
 
       const eval2 = makeEvaluation({
         content: {
@@ -126,8 +126,8 @@ describe("skillScoring", () => {
         .where(and(eq(userSkillState.userId, TEST_USER_ID), eq(userSkillState.skillId, "technical_explanation")))
         .limit(1);
 
-      expect(after[0].evidenceCount).toBe(2);
-      expect(after[0].score).toBeGreaterThan(scoreBefore);
+      expect(after[0]!.evidenceCount).toBe(2);
+      expect(after[0]!.score).toBeGreaterThan(scoreBefore);
     });
 
     it("sets trend to improving when score increases", async () => {
@@ -144,7 +144,7 @@ describe("skillScoring", () => {
         .where(and(eq(userSkillState.userId, TEST_USER_ID), eq(userSkillState.skillId, "technical_explanation")))
         .limit(1);
 
-      expect(state[0].trend).toBe("improving");
+      expect(state[0]!.trend).toBe("improving");
     });
 
     it("returns updated skill list", async () => {
@@ -172,7 +172,7 @@ describe("skillScoring", () => {
       const profile = await getSkillProfile(db, TEST_USER_ID);
       expect(profile).toHaveLength(10);
       for (let i = 1; i < profile.length; i++) {
-        expect(profile[i].score).toBeGreaterThanOrEqual(profile[i - 1].score);
+        expect(profile[i]!.score).toBeGreaterThanOrEqual(profile[i - 1]!.score);
       }
     });
 

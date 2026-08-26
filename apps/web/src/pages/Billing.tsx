@@ -1,125 +1,142 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
-import { ErrorBanner, SuccessBanner } from "../components/forms";
 
 interface Plan {
   id: string;
   name: string;
   price: number;
-  evalsPerDay: number;
-  voiceMinutesPerDay: number;
+  currency?: string;
+  interval: string;
   features: string[];
 }
 
-interface Usage {
-  evaluationsUsed: number;
-  evaluationsLimit: number;
-  voiceMinutesUsed: number;
-  voiceMinutesLimit: number;
-}
-
-interface BillingState {
+interface PlansResponse {
   plans: Plan[];
-  current: { plan: string; status: string };
+  currentPlan: string;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
 }
 
-export function Billing() {
-  const [billing, setBilling] = useState<BillingState | null>(null);
-  const [usage, setUsage] = useState<Usage | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export default function Billing() {
+  const navigate = useNavigate();
+  const [data, setData] = useState<PlansResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [success, setSuccess] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+
+  useEffect(() => {
+    api.getPlans()
+      .then(setData)
+      .catch(() => setError("Failed to load plans"))
+      .finally(() => setLoading(false));
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("billing") === "success") {
-      setSuccess("Your subscription is now active! Enjoy unlimited practice.");
-      window.history.replaceState({}, "", "/settings");
+      api.getPlans().then(setData);
     }
-    Promise.all([
-      api.get<BillingState>("/api/billing/plans"),
-      api.get<{ usage: Usage }>("/api/account/stats"),
-    ])
-      .then(([b, u]) => {
-        setBilling(b);
-        setUsage(u as unknown as Usage);
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : "Could not load billing info"))
-      .finally(() => setLoading(false));
   }, []);
 
-  async function handleUpgrade() {
-    setBusy(true);
-    setError(null);
+  const handleCheckout = async (planId: string) => {
+    if (planId === "free") return;
+    setCheckoutLoading(true);
     try {
-      const { url } = await api.post<{ url: string }>("/api/billing/checkout");
-      if (url) window.location.href = url;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not start checkout");
+      const result = await api.createCheckout();
+      if (result.shortUrl) {
+        window.location.href = result.shortUrl;
+      } else {
+        setError("Razorpay checkout not available. Please configure RAZORPAY_PLAN_ID.");
+      }
+    } catch {
+      setError("Failed to start checkout. Please try again.");
     } finally {
-      setBusy(false);
+      setCheckoutLoading(false);
     }
-  }
+  };
 
-  async function handleManage() {
-    setBusy(true);
-    setError(null);
+  const handleCancel = async () => {
+    if (!confirm("Cancel your Pro subscription? You'll keep access until the end of your billing period.")) return;
+    setCancelLoading(true);
     try {
-      const { url } = await api.post<{ url: string }>("/api/billing/portal");
-      if (url) window.location.href = url;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not open billing portal");
+      await api.cancelPlan();
+      const updated = await api.getPlans();
+      setData(updated);
+    } catch {
+      setError("Failed to cancel. Please try again.");
     } finally {
-      setBusy(false);
+      setCancelLoading(false);
     }
-  }
+  };
 
-  if (loading) return <div className="card"><span className="spinner" /> Loading billing…</div>;
-
-  const currentPlan = billing?.current?.plan ?? "free";
+  if (loading) return <div className="page-center"><div className="spinner" /></div>;
 
   return (
-    <div className="stack">
-      <ErrorBanner message={error} />
-      <SuccessBanner message={success} />
+    <div className="page-container">
+      <h1 className="section-title">Subscription</h1>
+      <p className="section-desc">Choose the plan that works for you.</p>
 
-      <div className="card">
-        <h2 className="card-title">Your Plan</h2>
-        <div className="plan-current">
-          <span className="plan-badge">{currentPlan === "pro" ? "Pro" : "Free"}</span>
-          {currentPlan === "pro" ? (
-            <button className="btn btn-ghost" onClick={() => void handleManage()} disabled={busy}>
-              Manage subscription
-            </button>
-          ) : (
-            <button className="btn btn-primary" onClick={() => void handleUpgrade()} disabled={busy}>
-              {busy ? "Redirecting…" : "Upgrade to Pro — ₹9.99/month"}
-            </button>
-          )}
-        </div>
-      </div>
+      {error && <div className="alert alert-error" onClick={() => setError("")}>{error}</div>}
 
-      {billing?.plans && (
-        <div className="plans-grid">
-          {billing.plans.map((plan) => (
-            <div key={plan.id} className={`card plan-card ${currentPlan === plan.id ? "plan-active" : ""}`}>
-              <h3 className="plan-name">{plan.name}</h3>
-              <p className="plan-price">{plan.price === 0 ? "Free" : `₹${(plan.price / 100).toFixed(0)}/mo`}</p>
-              <ul className="plan-features">
-                {plan.features.map((f) => (
-                  <li key={f}>{f}</li>
-                ))}
-              </ul>
-              {currentPlan !== plan.id && plan.id === "pro" && (
-                <button className="btn btn-primary" onClick={() => void handleUpgrade()} disabled={busy}>
-                  Upgrade
-                </button>
-              )}
-            </div>
-          ))}
+      {data?.currentPlan === "pro" && (
+        <div className="billing-current">
+          <div className="billing-current-header">
+            <h3>Current plan: Pro</h3>
+            {data.currentPeriodEnd && (
+              <span>Renews {new Date(data.currentPeriodEnd).toLocaleDateString()}</span>
+            )}
+          </div>
+          <button
+            className="btn btn-danger btn-sm"
+            onClick={handleCancel}
+            disabled={cancelLoading}
+          >
+            {cancelLoading ? "Cancelling..." : "Cancel subscription"}
+          </button>
         </div>
       )}
+
+      <div className="billing-grid">
+        {data?.plans.map((plan) => (
+          <div
+            key={plan.id}
+            className={`billing-card ${plan.id === data.currentPlan ? "billing-card-active" : ""}`}
+          >
+            <h3>{plan.name}</h3>
+            <div className="billing-price">
+              {plan.price === 0 ? (
+                <span>Free</span>
+              ) : (
+                <span>₹{(plan.price / 100).toLocaleString()}/{plan.interval}</span>
+              )}
+            </div>
+            <ul className="billing-features">
+              {plan.features.map((f, i) => (
+                <li key={i}>{f}</li>
+              ))}
+            </ul>
+            {plan.id === data?.currentPlan ? (
+              <button className="btn btn-secondary" disabled>Current plan</button>
+            ) : plan.id === "pro" ? (
+              <button
+                className="btn btn-primary"
+                onClick={() => handleCheckout(plan.id)}
+                disabled={checkoutLoading}
+              >
+                {checkoutLoading ? "Loading..." : "Upgrade to Pro"}
+              </button>
+            ) : (
+              <button className="btn btn-secondary" disabled>Downgrade</button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="billing-note">
+        <p>Payments are processed securely via Razorpay. Cancel anytime.</p>
+      </div>
     </div>
   );
 }

@@ -9,7 +9,7 @@ import type { EvaluationResult } from "@kairos/shared";
 
 function makeResult(overrides: Partial<EvaluationResult> = {}): EvaluationResult {
   return {
-    contractVersion: 2,
+    contractVersion: 1,
     answerId: 1,
     kind: "initial",
     followUpOf: null,
