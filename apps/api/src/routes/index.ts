@@ -10,6 +10,7 @@ import { notificationsRouter } from "./notifications.routes";
 import { questionsRouter } from "./questions.routes";
 import { streaksRouter } from "./streaks.routes";
 import { submissionsRouter } from "./submissions.routes";
+import { tpoRouter } from "./tpo.routes";
 
 export const apiRouter: Router = Router();
 
@@ -24,3 +25,4 @@ apiRouter.use("/analytics", analyticsRouter);
 apiRouter.use("/submissions", submissionsRouter);
 apiRouter.use("/evaluations", evaluationsRouter);
 apiRouter.use("/flags", flagsRouter);
+apiRouter.use("/tpo", tpoRouter);

@@ -187,6 +187,9 @@ export const FUNNEL_EVENTS = [
   "streak_milestone_viewed",
   "subscription_started",
   "subscription_converted",
+  "band_confirmation",
+  "tpo_login",
+  "outcome_selfreported",
 ] as const;
 export type FunnelEvent = (typeof FUNNEL_EVENTS)[number];
 

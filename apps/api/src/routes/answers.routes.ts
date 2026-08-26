@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@kairos/db";
 import { answers } from "@kairos/db/schema";
@@ -10,6 +11,7 @@ import { aiRateLimit } from "../middleware/rateLimit";
 import { validate } from "../middleware/validate";
 import { getRuntime } from "../queue";
 import { answerService } from "../services/answer.service";
+import { confirmBand, getConfirmation } from "../services/bandConfirmation";
 import { getWeeklySummary } from "../services/stats.service";
 
 export const answersRouter: Router = Router();
@@ -148,5 +150,52 @@ answersRouter.get(
     const { getFollowUps } = await import("../services/followUp");
     const followUps = await getFollowUps(db, Number(req.params.id));
     res.json({ followUps });
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Band confirmation (labeling queue)
+// ---------------------------------------------------------------------------
+
+const confirmSchema = z.object({
+  confirmed: z.boolean(),
+  comment: z.string().max(500).optional(),
+});
+
+answersRouter.post(
+  "/:id/confirm",
+  validate(confirmSchema),
+  asyncHandler(async (req, res) => {
+    const db = getDb();
+    const answerId = Number(req.params.id);
+    const [answer] = await db
+      .select({ id: answers.id, status: answers.status })
+      .from(answers)
+      .where(and(eq(answers.id, answerId), eq(answers.userId, req.userId!)));
+    if (!answer) throw AppError.notFound("Answer not found");
+    if (answer.status !== "completed") {
+      throw AppError.conflict("Can only confirm completed answers");
+    }
+    const confirmation = await confirmBand(
+      db,
+      answerId,
+      req.userId!,
+      req.body.confirmed,
+      req.body.comment,
+    );
+    res.json({ confirmation });
+  }),
+);
+
+answersRouter.get(
+  "/:id/confirmation",
+  asyncHandler(async (req, res) => {
+    const db = getDb();
+    const confirmation = await getConfirmation(
+      db,
+      Number(req.params.id),
+      req.userId!,
+    );
+    res.json({ confirmation });
   }),
 );

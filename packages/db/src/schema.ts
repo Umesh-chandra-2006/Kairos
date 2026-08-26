@@ -38,7 +38,7 @@ export const ANSWER_STATUS_DB_ENUM = [
 ] as const;
 export type AnswerStatusDb = (typeof ANSWER_STATUS_DB_ENUM)[number];
 
-export const USER_ROLE_ENUM = ["user", "admin"] as const;
+export const USER_ROLE_ENUM = ["user", "admin", "tpo"] as const;
 export type UserRoleDb = (typeof USER_ROLE_ENUM)[number];
 
 export type ProfileJson = {
@@ -63,10 +63,15 @@ export const users = mysqlTable(
     emailVerified: boolean("emailVerified").default(false).notNull(),
     profile: json("profile").$type<ProfileJson>().default(null),
     timezone: varchar("timezone", { length: 64 }).default("Asia/Kolkata"),
+    /** College/institution scope — NULL for freemium users (Wave 4 generalizes this). */
+    collegeId: varchar("collegeId", { length: 64 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
-  (t) => [uniqueIndex("users_email_idx").on(t.email)],
+  (t) => [
+    uniqueIndex("users_email_idx").on(t.email),
+    index("users_college_idx").on(t.collegeId),
+  ],
 );
 
 export type User = typeof users.$inferSelect;
@@ -391,6 +396,7 @@ export const NOTIFICATION_TYPE_ENUM = [
   "streak_reminder",
   "weekly_summary",
   "weekly_digest",
+  "band_confirmation",
 ] as const;
 export const NOTIFICATION_CHANNEL_ENUM = ["web_push", "expo_push", "email"] as const;
 export const NOTIFICATION_STATUS_ENUM = ["pending", "sent", "failed"] as const;
@@ -503,3 +509,87 @@ export const analyticsEvents = mysqlTable(
 
 export type AnalyticsEvent = typeof analyticsEvents.$inferSelect;
 export type InsertAnalyticsEvent = typeof analyticsEvents.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// band_confirmations — labeling queue (build-plan §8 Wave 1, §8 Wave 2)
+// Every completed rep enters review; student confirms band (👍/👎).
+// Unique per (answerId, userId) — one confirmation per student per answer.
+// ---------------------------------------------------------------------------
+export const bandConfirmations = mysqlTable(
+  "band_confirmations",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    answerId: int("answerId")
+      .notNull()
+      .references(() => answers.id, { onDelete: "cascade" }),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** true = student agreed with band; false = student disputed. */
+    confirmed: boolean("confirmed").default(true).notNull(),
+    comment: varchar("comment", { length: 500 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("band_confirmations_answer_user_idx").on(t.answerId, t.userId),
+    index("band_confirmations_user_idx").on(t.userId),
+  ],
+);
+
+export type BandConfirmation = typeof bandConfirmations.$inferSelect;
+export type InsertBandConfirmation = typeof bandConfirmations.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// outcome_reports — self-reported placement outcomes (build-plan §8 Wave 2)
+// Collected from day one of pilots; retroactive collection impossible.
+// Feeds the only evidence that changes everything (cohort vs control).
+// ---------------------------------------------------------------------------
+export const outcomeReports = mysqlTable(
+  "outcome_reports",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    collegeId: varchar("collegeId", { length: 64 }).notNull(),
+    interviewsAttended: int("interviewsAttended").default(0),
+    companies: json("companies").$type<string[]>(),
+    roundsReached: json("roundsReached").$type<string[]>(),
+    /** shortlist | offer | rejected | pending */
+    result: varchar("result", { length: 20 }),
+    offers: int("offers").default(0),
+    notes: text("notes"),
+    selfReportedAt: timestamp("selfReportedAt").defaultNow().notNull(),
+  },
+  (t) => [
+    index("outcome_reports_user_idx").on(t.userId),
+    index("outcome_reports_college_idx").on(t.collegeId),
+  ],
+);
+
+export type OutcomeReport = typeof outcomeReports.$inferSelect;
+export type InsertOutcomeReport = typeof outcomeReports.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// tpo_views — TPO dashboard audit log (build-plan §8 Wave 2)
+// Every TPO query is logged for privacy audit trail.
+// ---------------------------------------------------------------------------
+export const tpoViews = mysqlTable(
+  "tpo_views",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    collegeId: varchar("collegeId", { length: 64 }).notNull(),
+    queryType: varchar("queryType", { length: 50 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [
+    index("tpo_views_user_idx").on(t.userId),
+    index("tpo_views_college_idx").on(t.collegeId),
+  ],
+);
+
+export type TpoView = typeof tpoViews.$inferSelect;
+export type InsertTpoView = typeof tpoViews.$inferInsert;

@@ -64,6 +64,13 @@
       "when": 1787661000000,
       "tag": "0008_bold_chapel",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1787700000000,
+      "tag": "0009_proud_kate_bishop",
+      "breakpoints": true
     }
   ]
 }
