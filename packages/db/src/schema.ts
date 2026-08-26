@@ -593,3 +593,89 @@ export const tpoViews = mysqlTable(
 
 export type TpoView = typeof tpoViews.$inferSelect;
 export type InsertTpoView = typeof tpoViews.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// skills — skill taxonomy dimensions (build-plan Wave 3)
+// 10 core skills derived from evaluation dimensions (content/structure/delivery).
+// ---------------------------------------------------------------------------
+
+export const skills = mysqlTable(
+  "skills",
+  {
+    id: varchar("id", { length: 32 }).primaryKey(),
+    name: varchar("name", { length: 64 }).notNull(),
+    description: varchar("description", { length: 280 }).notNull(),
+    category: varchar("category", { length: 32 }).default("general").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+);
+
+export type Skill = typeof skills.$inferSelect;
+export type InsertSkill = typeof skills.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// user_skill_state — per-user per-skill rolling state (build-plan Wave 3)
+// Score 0..10 (band-aligned), confidence 0..1, trend: improving/stable/declining.
+// ---------------------------------------------------------------------------
+
+export const userSkillState = mysqlTable(
+  "user_skill_state",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    skillId: varchar("skillId", { length: 32 })
+      .notNull()
+      .references(() => skills.id, { onDelete: "cascade" }),
+    score: real("score").default(0).notNull(),
+    confidence: real("confidence").default(0).notNull(),
+    evidenceCount: int("evidenceCount").default(0).notNull(),
+    lastAssessedAt: timestamp("lastAssessedAt"),
+    trend: varchar("trend", { length: 16 }).default("stable"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("user_skill_state_user_skill_idx").on(t.userId, t.skillId),
+    index("user_skill_state_skill_idx").on(t.skillId),
+    index("user_skill_state_user_idx").on(t.userId),
+  ],
+);
+
+export type UserSkillState = typeof userSkillState.$inferSelect;
+export type InsertUserSkillState = typeof userSkillState.$inferInsert;
+
+// ---------------------------------------------------------------------------
+// skill_evidence — every skill conclusion linked to its evaluation (build-plan Wave 3)
+// Append-only. Feeds the calibration harness and skill state updates.
+// ---------------------------------------------------------------------------
+
+export const skillEvidence = mysqlTable(
+  "skill_evidence",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    skillId: varchar("skillId", { length: 32 })
+      .notNull()
+      .references(() => skills.id, { onDelete: "cascade" }),
+    answerId: int("answerId")
+      .notNull()
+      .references(() => answers.id, { onDelete: "cascade" }),
+    evaluationVersionId: int("evaluationVersionId"),
+    score: real("score").notNull(),
+    band: varchar("band", { length: 16 }).notNull(),
+    evidence: json("evidence").$type<string[]>(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [
+    index("skill_evidence_user_skill_idx").on(t.userId, t.skillId),
+    index("skill_evidence_answer_idx").on(t.answerId),
+    index("skill_evidence_user_idx").on(t.userId),
+  ],
+);
+
+export type SkillEvidence = typeof skillEvidence.$inferSelect;
+export type InsertSkillEvidence = typeof skillEvidence.$inferInsert;

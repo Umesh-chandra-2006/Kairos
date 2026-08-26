@@ -1,6 +1,6 @@
 import { beforeAll, afterAll } from "vitest";
 import mysql from "mysql2/promise";
-import { closeDb, runMigrations } from "@kairos/db";
+import { closeDb, runMigrations, getDb } from "@kairos/db";
 import { loadEnv } from "@kairos/config";
 import { getRuntime, initRuntime } from "../queue";
 import { registerEvalWorker } from "../workers/evalWorker";
@@ -16,8 +16,11 @@ beforeAll(async () => {
   if (initialized) return;
   initialized = true;
 
+  await closeDb();
+
   const admin = await mysql.createConnection(ADMIN_URL);
-  await admin.query(`CREATE DATABASE IF NOT EXISTS \`${TEST_DB}\``);
+  await admin.query(`DROP DATABASE IF EXISTS \`${TEST_DB}\``);
+  await admin.query(`CREATE DATABASE \`${TEST_DB}\``);
   await admin.end();
 
   process.env.DATABASE_URL = TEST_DB_URL;
@@ -29,7 +32,6 @@ beforeAll(async () => {
   process.env.RATE_LIMIT_MAX = "10000";
   process.env.RATE_LIMIT_AUTH_MAX = "10000";
 
-  // Prime the config cache so the in-process runtime is used (no Redis dependency in tests).
   loadEnv({
     DATABASE_URL: TEST_DB_URL,
     REDIS_URL: "",
@@ -39,7 +41,7 @@ beforeAll(async () => {
     RATE_LIMIT_AUTH_MAX: 10000,
   });
 
-  await runMigrations();
+  await runMigrations(getDb());
   await seedTestQuestions();
 
   await initRuntime();

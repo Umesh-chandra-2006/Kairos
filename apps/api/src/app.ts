@@ -13,6 +13,7 @@ import { getRedis, redisReady } from "./lib/cache";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import { generalRateLimit } from "./middleware/rateLimit";
 import { apiRouter } from "./routes";
+import { recordApiLatency } from "./lib/obs";
 
 const webDist = path.join(getProjectRoot(), "apps", "web", "dist");
 
@@ -67,6 +68,17 @@ export function createApp(): Express {
   });
 
   app.use("/api", generalRateLimit());
+
+  // Latency tracking middleware
+  app.use("/api", (req, res, next) => {
+    const start = Date.now();
+    res.on("finish", () => {
+      const ms = Date.now() - start;
+      const isError = res.statusCode >= 400;
+      recordApiLatency(req.route?.path ?? req.path, req.method, ms, isError);
+    });
+    next();
+  });
 
   app.use("/api", apiRouter);
 

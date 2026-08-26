@@ -5,7 +5,7 @@ import { answers, questions, users } from "@kairos/db/schema";
 import type { AnswerStatusDb } from "@kairos/db/schema";
 import { dateStr } from "../lib/dates";
 import { logger } from "../lib/logger";
-import { logDomainEvent } from "../lib/obs";
+import { logDomainEvent, recordEvalStarted, recordEvalCompleted, recordEvalFailed, recordLlmCall } from "../lib/obs";
 import { getRuntime } from "../queue";
 import type { EvalJobData } from "../queue/types";
 import { getAudioStorage } from "../services/audio/storage";
@@ -19,6 +19,7 @@ import { aiService } from "../services/ai.service";
 import { recordReview } from "../services/spacedRepetition";
 import { getOrGenerateModelAnswer } from "../services/modelAnswer";
 import { generateFollowUp } from "../services/followUp";
+import { updateSkillState } from "../services/skillScoring";
 
 interface ResultSetHeader {
   affectedRows?: number;
@@ -151,6 +152,7 @@ export function registerEvalWorker(): void {
         modelVersion: result.modelVersion,
         score: result.score,
       });
+      recordEvalCompleted(Date.now() - startedAt);
 
       await hub.publish(channel, {
         type: "done",
@@ -178,6 +180,7 @@ export function registerEvalWorker(): void {
         durationMs: Date.now() - startedAt,
         outcome: message.slice(0, 200),
       });
+      recordEvalFailed();
       // --- Guarded failure: demote only if we still own the row ------------
       await db
         .update(answers)
@@ -204,6 +207,7 @@ export function registerEvalWorker(): void {
       return;
     }
     logDomainEvent("eval_started", { userId: job.userId, answerId: job.answerId, kind: "voice" });
+    recordEvalStarted();
 
     try {
       const [answer] = await db.select().from(answers).where(eq(answers.id, job.answerId));
@@ -249,6 +253,11 @@ export function registerEvalWorker(): void {
       );
       await persistEvaluation(db, job.answerId, result);
 
+      // Update skill state from evaluation dimensions
+      void updateSkillState(db, job.userId, result, job.answerId).catch((err) =>
+        logger.warn({ err, userId: job.userId, answerId: job.answerId }, "skill scoring failed"),
+      );
+
       void recordReview(db, job.userId, job.questionId, LEGACY_SCORE_BY_BAND[result.overallBand]).catch((err) =>
         logger.warn({ err, userId: job.userId, questionId: job.questionId }, "spaced repetition recordReview failed"),
       );
@@ -261,6 +270,7 @@ export function registerEvalWorker(): void {
         provider: `${asr.name}+${result.versions.provider}`,
         outcome: `band=${result.overallBand}`,
       });
+      recordEvalCompleted(Date.now() - startedAt);
 
       await hub.publish(channel, {
         type: "voice_done",
@@ -282,6 +292,7 @@ export function registerEvalWorker(): void {
         durationMs: Date.now() - startedAt,
         outcome: message.slice(0, 200),
       });
+      recordEvalFailed();
       await db
         .update(answers)
         .set({ status: "failed", errorMessage: message.slice(0, 1000) })

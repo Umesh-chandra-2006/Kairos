@@ -196,6 +196,25 @@ export type FunnelEvent = (typeof FUNNEL_EVENTS)[number];
 export const ANSWER_MIN_LENGTH = 20;
 export const ANSWER_MAX_LENGTH = 10_000;
 
+// ---------------------------------------------------------------------------
+// Skills taxonomy — 10 core dimensions (build-plan Wave 3)
+// Each maps to one or more evaluation dimensions (content/structure/delivery).
+// ---------------------------------------------------------------------------
+
+export const SKILL_DIMENSIONS = [
+  "technical_explanation",
+  "structure",
+  "conciseness",
+  "relevance",
+  "clarity",
+  "fluency",
+  "composure",
+  "domain_depth",
+  "conclusion_strength",
+  "delivery_quality",
+] as const;
+export type SkillDimension = (typeof SKILL_DIMENSIONS)[number];
+
 export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   [ERROR_CODES.VALIDATION]: "Invalid request data",
   [ERROR_CODES.UNAUTHORIZED]: "Authentication required",
