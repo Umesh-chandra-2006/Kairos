@@ -87,9 +87,23 @@ export async function getWeakSkills(db: DB, collegeId: string) {
 
 /**
  * 4. Students needing intervention — no activity in 14+ days.
+ * Uses a subquery to find users whose latest answer is older than 14 days
+ * (or who have no answers at all).
  */
 export async function getStudentsNeedingIntervention(db: DB, collegeId: string) {
-  const twoWeeksAgo = new Date(Date.now() - 14 * DAY);
+  const twoWeeksAgo = new Date(Date.now() - 14 * DAY)
+    .toISOString()
+    .slice(0, 19)
+    .replace("T", " ");
+
+  // Subquery: users whose most recent answer is older than 14 days (or no answers)
+  const inactiveUsers = db
+    .select({ userId: answers.userId })
+    .from(answers)
+    .groupBy(answers.userId)
+    .having(
+      sql`MAX(${answers.createdAt}) < ${twoWeeksAgo} OR MAX(${answers.createdAt}) IS NULL`,
+    );
 
   return db
     .select({
@@ -104,7 +118,7 @@ export async function getStudentsNeedingIntervention(db: DB, collegeId: string) 
     .where(
       and(
         eq(users.collegeId, collegeId),
-        sql`MAX(${answers.createdAt}) < ${twoWeeksAgo} OR MAX(${answers.createdAt}) IS NULL`,
+        sql`${users.id} IN (${inactiveUsers})`,
       ),
     )
     .groupBy(users.id);
