@@ -93,10 +93,11 @@ export function createApp(): Express {
     });
   }
 
-  app.use(notFoundHandler);
-  // Sentry error handler must be before custom errorHandler
+  // Sentry error handler — must be before notFoundHandler to capture 404s
   const sentrySetup = sentryErrorHandler();
   sentrySetup(app);
+
+  app.use(notFoundHandler);
   app.use(errorHandler);
 
   return app;

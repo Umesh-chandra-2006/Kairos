@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registerPasswordHint, validateRegisterForm, type RegisterFormErrors } from "@kairos/shared";
@@ -7,6 +7,13 @@ import { useAuth } from "../auth/AuthContext";
 import { AuthShell, ErrorBanner, Field } from "../components/forms";
 
 const REFERRAL_STORAGE_KEY = "kairos_referral_code";
+const TURNSTILE_SITEKEY = import.meta.env.VITE_TURNSTILE_SITEKEY as string | undefined;
+
+declare global {
+  interface Window {
+    turnstile?: { render: (container: HTMLElement, opts: Record<string, unknown>) => string; reset: (widgetId: string) => void; getResponse: (widgetId: string) => string | undefined };
+  }
+}
 
 function errorsFromApi(err: unknown): RegisterFormErrors {
   if (err instanceof ApiError) {
@@ -31,6 +38,26 @@ export function Register() {
   const [fieldErrors, setFieldErrors] = useState<RegisterFormErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const turnstileRef = useRef<HTMLDivElement>(null);
+  const turnstileWidgetId = useRef<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!TURNSTILE_SITEKEY || !turnstileRef.current || window.turnstile) return;
+    const script = document.createElement("script");
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    script.async = true;
+    script.onload = () => {
+      if (turnstileRef.current && window.turnstile) {
+        turnstileWidgetId.current = window.turnstile.render(turnstileRef.current, {
+          sitekey: TURNSTILE_SITEKEY,
+          callback: (token: string) => setTurnstileToken(token),
+          "expired-callback": () => setTurnstileToken(null),
+        });
+      }
+    };
+    document.head.appendChild(script);
+  }, []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -42,7 +69,7 @@ export function Register() {
     setBusy(true);
     try {
       const referralCode = localStorage.getItem(REFERRAL_STORAGE_KEY) || undefined;
-      await register(name.trim(), email.trim(), password, referralCode);
+      await register(name.trim(), email.trim(), password, referralCode, turnstileToken ?? undefined);
       localStorage.removeItem(REFERRAL_STORAGE_KEY);
       navigate("/");
     } catch (err) {
@@ -82,6 +109,7 @@ export function Register() {
           <input type="checkbox" checked={agreeToS} onChange={(e) => setAgreeToS(e.target.checked)} />
           <span>I agree to the <Link to="/terms">Terms of Service</Link> and <Link to="/privacy">Privacy Policy</Link></span>
         </label>
+        {TURNSTILE_SITEKEY && <div ref={turnstileRef} style={{ marginBottom: 8 }} />}
         <button className="btn btn-primary" disabled={busy} type="submit">
           {busy ? "Creating…" : "Create account"}
         </button>

@@ -18,7 +18,7 @@ import {
 import { asyncHandler } from "../lib/http";
 import { clearRefreshCookie, setRefreshCookie } from "../lib/cookies";
 import { requireAuth } from "../middleware/auth";
-import { authRateLimit } from "../middleware/rateLimit";
+import { authRateLimit, registrationRateLimit } from "../middleware/rateLimit";
 import { validate } from "../middleware/validate";
 import { authService, type AuthResult } from "../services/auth.service";
 import { toPublicUser } from "../services/user.service";
@@ -48,6 +48,7 @@ function sendAuthResult(res: Parameters<typeof setRefreshCookie>[0], result: Aut
 
 authRouter.post(
   "/register",
+  registrationRateLimit(),
   authRateLimit(),
   validate(registerSchema),
   asyncHandler(async (req, res) => {
@@ -59,6 +60,30 @@ authRouter.post(
       // Silently return a fake success so bots don't retry with different params
       res.status(201).json({ ok: true });
       return;
+    }
+
+    // Cloudflare Turnstile verification (when sitekey is configured)
+    const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
+    const turnstileToken = (req.body as Record<string, unknown>).turnstileToken as string | undefined;
+    if (turnstileSecret) {
+      if (!turnstileToken) {
+        res.status(400).json({ error: { code: "VALIDATION", message: "CAPTCHA verification required", retryable: false } });
+        return;
+      }
+      try {
+        const verifyRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({ secret: turnstileSecret, response: turnstileToken }),
+        });
+        const verifyData = (await verifyRes.json()) as { success: boolean };
+        if (!verifyData.success) {
+          res.status(400).json({ error: { code: "VALIDATION", message: "CAPTCHA verification failed", retryable: false } });
+          return;
+        }
+      } catch {
+        // If Cloudflare is unreachable, fail open (don't block registration)
+      }
     }
 
     const result = await authService.register(db, {

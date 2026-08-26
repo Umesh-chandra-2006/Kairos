@@ -52,3 +52,11 @@ export function aiRateLimit() {
     keyGenerator: (req) => String(req.userId ?? req.ip ?? "unknown"),
   });
 }
+
+export function registrationRateLimit() {
+  return makeLimit({
+    windowMs: 60_000,
+    max: 20,
+    keyGenerator: (req) => "reg:" + (req.ip ?? "unknown"),
+  });
+}

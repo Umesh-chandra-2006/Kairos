@@ -1225,6 +1225,14 @@ select:focus,
 .checkbox-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); }
 .checkbox-row a { color: var(--primary); }
 
+/* ---- Consent toggles ---- */
+
+.consent-toggles { display: flex; gap: 16px; margin: 12px 0; flex-wrap: wrap; }
+.consent-toggle { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.consent-toggle input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); }
+.consent-toggle input:disabled { opacity: 0.6; }
+.consent-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
 /* ---- Consent banner ---- */
 
 .consent-banner {

@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { VerifyEmailGate } from "./components/VerifyEmailGate";
 import { AnswerDetail } from "./pages/AnswerDetail";
 import Billing from "./pages/Billing";
 import { Dashboard } from "./pages/Dashboard";
@@ -41,13 +42,15 @@ export function App() {
       <Route path="/privacy" element={<PrivacyPolicy />} />
       <Route path="/invite/:code" element={<InviteAccept />} />
 
-      <Route
-        element={
-          <ProtectedRoute>
-            <Layout />
-          </ProtectedRoute>
-        }
-      >
+        <Route
+          element={
+            <ProtectedRoute>
+              <VerifyEmailGate>
+                <Layout />
+              </VerifyEmailGate>
+            </ProtectedRoute>
+          }
+        >
         <Route path="/" element={user && !user.profile ? <Navigate to="/onboarding" replace /> : <Dashboard />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/practice" element={<Practice />} />

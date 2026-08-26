@@ -1,9 +1,11 @@
-const CACHE_NAME = "kairos-shell-v1";
+const CACHE_VERSION = 2;
+const CACHE_NAME = `kairos-shell-v${CACHE_VERSION}`;
 const STATIC_ASSETS = [
   "/",
   "/index.html",
   "/manifest.json",
   "/icons/icon.svg",
+  "/offline.html",
 ];
 
 // Install: cache app shell
@@ -45,7 +47,14 @@ self.addEventListener("fetch", (event) => {
             }
             return response;
           })
-          .catch(() => cached);
+          .catch(() => {
+            // Offline fallback: return cached page or offline.html
+            if (cached) return cached;
+            if (request.mode === "navigate") {
+              return caches.match("/offline.html");
+            }
+            return new Response("Offline", { status: 503 });
+          });
         return cached || fetched;
       }),
     );

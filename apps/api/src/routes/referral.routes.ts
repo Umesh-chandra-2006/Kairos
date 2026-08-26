@@ -1,5 +1,6 @@
 import { Router, type Router as RouterType, type Request, type Response } from "express";
 import { requireAuth } from "../middleware/auth.js";
+import { authRateLimit } from "../middleware/rateLimit.js";
 import { getReferralStats, applyReferralCode } from "../services/referral.js";
 import { z } from "zod";
 
@@ -10,7 +11,7 @@ router.get("/referral", requireAuth, async (req: Request, res: Response) => {
   res.json(stats);
 });
 
-router.post("/referral/apply", requireAuth, async (req: Request, res: Response) => {
+router.post("/referral/apply", requireAuth, authRateLimit(), async (req: Request, res: Response) => {
   const schema = z.object({ code: z.string().min(4).max(16) });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
