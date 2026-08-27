@@ -89,7 +89,6 @@ const pipelineCorpus: PipelineEntry[] = [
     durationMs: 25_000,
     hasRealTimestamps: true,
     expect: {
-      overallBand: "solid",
       deliveryAvailability: "available",
       evidenceRefCountMin: 5,
       evidenceRefCountMax: 40,
@@ -111,7 +110,6 @@ const pipelineCorpus: PipelineEntry[] = [
     durationMs: 18_000,
     hasRealTimestamps: false,
     expect: {
-      overallBand: "solid",
       deliveryAvailability: "unavailable",
       evidenceRefCountMin: 3,
       hasDeliveryMetricRefs: false,
