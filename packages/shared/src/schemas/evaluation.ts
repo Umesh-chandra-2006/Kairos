@@ -100,6 +100,7 @@ export const pauseMetricsSchema = z.object({
 export const deliveryDimensionSchema = z.object({
   band: bandSchema,
   source: z.literal("deterministic"),
+  availability: z.enum(["available", "unavailable"]).default("available"),
   /** Words per minute across speaking time. 0 when timestamps are unavailable. */
   speechRate: z.number().min(0).max(400),
   /** Filler words per minute of total duration. 0 when timestamps are unavailable. */

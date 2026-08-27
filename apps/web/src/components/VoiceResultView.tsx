@@ -56,8 +56,9 @@ export function VoiceResultView({
         </div>
 
         <p className="muted delivery-metrics">
-          {Math.round(d.speechRate)} wpm · {d.fillerRate.toFixed(1)} fillers/min ·{" "}
-          {Math.round(d.speakingRatio * 100)}% speaking time · {d.pauses.count} pauses
+          {d.availability === "unavailable"
+            ? "Delivery metrics unavailable — timestamps could not be measured"
+            : `${Math.round(d.speechRate)} wpm · ${d.fillerRate.toFixed(1)} fillers/min · ${Math.round(d.speakingRatio * 100)}% speaking time · ${d.pauses.count} pauses`}
         </p>
 
         <div className="next-action">

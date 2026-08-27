@@ -184,6 +184,7 @@ export async function evaluateV2(
     : {
         band: "needs_work" as const,
         source: "deterministic" as const,
+        availability: "unavailable" as const,
         speechRate: 0,
         fillerRate: 0,
         speakingRatio: 0,
