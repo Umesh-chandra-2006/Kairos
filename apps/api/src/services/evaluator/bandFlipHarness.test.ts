@@ -32,6 +32,7 @@ function makeResult(overrides: Partial<EvaluationResult> = {}): EvaluationResult
     delivery: {
       band: "solid",
       source: "deterministic",
+      availability: "available",
       speechRate: 130,
       fillerRate: 8,
       speakingRatio: 0.78,

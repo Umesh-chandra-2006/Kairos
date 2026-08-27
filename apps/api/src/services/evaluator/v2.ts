@@ -175,6 +175,7 @@ export async function evaluateV2(
     ? {
         band: deliveryBand,
         source: "deterministic" as const,
+        availability: "available" as const,
         speechRate: metrics!.speechRate,
         fillerRate: metrics!.fillerRate,
         speakingRatio: metrics!.speakingRatio,

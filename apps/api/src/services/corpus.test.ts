@@ -26,6 +26,7 @@ interface CorpusEntry {
   expect?: {
     speechRateMin?: number;
     speechRateMax?: number;
+    fillerRateMin?: number;
     fillerRateMax?: number;
     speakingRatioMin?: number;
     speakingRatioMax?: number;
