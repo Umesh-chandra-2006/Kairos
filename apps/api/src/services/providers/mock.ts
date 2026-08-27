@@ -167,6 +167,7 @@ export class MockASRProvider implements ASRProvider {
       durationMs: Math.max(cursor, durationMs),
       provider: this.name,
       modelVersion: this.modelVersion,
+      hasRealTimestamps: true,
     };
   }
 }

@@ -100,14 +100,14 @@ export const pauseMetricsSchema = z.object({
 export const deliveryDimensionSchema = z.object({
   band: bandSchema,
   source: z.literal("deterministic"),
-  /** Words per minute across speaking time. */
-  speechRate: z.number().min(20).max(400),
-  /** Filler words per minute of speaking time. */
+  /** Words per minute across speaking time. 0 when timestamps are unavailable. */
+  speechRate: z.number().min(0).max(400),
+  /** Filler words per minute of total duration. 0 when timestamps are unavailable. */
   fillerRate: z.number().min(0).max(200),
-  /** Speaking time / total duration, 0..1. */
+  /** Speaking time / total duration, 0..1. 0 when timestamps are unavailable. */
   speakingRatio: z.number().min(0).max(1),
   pauses: pauseMetricsSchema,
-  durationMs: z.number().int().min(0).max(120_000),
+  durationMs: z.number().int().min(0).max(90_000),
 });
 export type DeliveryDimension = z.infer<typeof deliveryDimensionSchema>;
 

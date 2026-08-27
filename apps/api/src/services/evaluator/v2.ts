@@ -76,6 +76,8 @@ export interface EvaluateV2Params {
   transcript: string;
   words: ASRWord[];
   durationMs: number;
+  /** False when ASR words were interpolated from segments (synthetic). */
+  hasRealTimestamps: boolean;
 }
 
 export class EvalModelOutputError extends Error {
@@ -161,17 +163,33 @@ export async function evaluateV2(
 ): Promise<EvaluationResult> {
   const language = checkLanguage(params.transcript);
 
-  const metrics = computeDeliveryMetrics(params.words, params.durationMs);
-  const deliveryBand = bandDelivery(metrics);
-  const delivery = {
-    band: deliveryBand,
-    source: "deterministic" as const,
-    speechRate: metrics.speechRate,
-    fillerRate: metrics.fillerRate,
-    speakingRatio: metrics.speakingRatio,
-    pauses: metrics.pauses,
-    durationMs: params.durationMs,
-  };
+  // P0-2: When ASR timestamps are synthetic (interpolated from segments),
+  // delivery metrics are unreliable — mark delivery as unavailable instead
+  // of fabricating precise-looking numbers from fake data.
+  const hasRealTimestamps = params.hasRealTimestamps;
+  const metrics = hasRealTimestamps
+    ? computeDeliveryMetrics(params.words, params.durationMs)
+    : null;
+  const deliveryBand = hasRealTimestamps ? bandDelivery(metrics!) : "needs_work";
+  const delivery = hasRealTimestamps
+    ? {
+        band: deliveryBand,
+        source: "deterministic" as const,
+        speechRate: metrics!.speechRate,
+        fillerRate: metrics!.fillerRate,
+        speakingRatio: metrics!.speakingRatio,
+        pauses: metrics!.pauses,
+        durationMs: params.durationMs,
+      }
+    : {
+        band: "needs_work" as const,
+        source: "deterministic" as const,
+        speechRate: 0,
+        fillerRate: 0,
+        speakingRatio: 0,
+        pauses: { count: 0, totalMs: 0, avgMs: 0, longestMs: 0 },
+        durationMs: params.durationMs,
+      };
 
   const rubricTokens = [...new Set(
     params.rubricHints.toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 4),
@@ -226,6 +244,44 @@ export async function evaluateV2(
     (a, b) => BAND_ORDER[a.band] - BAND_ORDER[b.band] || DIMENSION_PRIORITY[a.dimension] - DIMENSION_PRIORITY[b.dimension],
   )[0]!;
 
+  // P0-3: Build evidenceRefs linking rubric tokens + transcript segments
+  // to the conclusions the model reached about each.
+  const evidenceRefs: EvaluationResult["evidenceRefs"] = [];
+
+  // Map each found rubric token to an evidenceRef so provenance is traceable.
+  mp.evidenceFound.forEach((item, i) => {
+    // Extract the rubric token this finding maps to (first 8 words, slugified).
+    const tokenSlug = item.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 80);
+    evidenceRefs.push({
+      id: `rubric-${tokenSlug}-${i}`,
+      dimension: "content",
+      kind: "rubric_token",
+      ref: tokenSlug,
+      note: item,
+    });
+  });
+
+  // Map each missing rubric point.
+  mp.missingEvidence.forEach((item, i) => {
+    const tokenSlug = item.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 80);
+    evidenceRefs.push({
+      id: `missing-${tokenSlug}-${i}`,
+      dimension: "content",
+      kind: "rubric_token",
+      ref: tokenSlug,
+      note: `Missing: ${item}`,
+    });
+  });
+
+  // Map delivery metric evidence when timestamps are real.
+  if (hasRealTimestamps && metrics) {
+    evidenceRefs.push(
+      { id: "metric-speech-rate", dimension: "delivery", kind: "metric", ref: `speech_rate=${metrics.speechRate}` },
+      { id: "metric-filler-rate", dimension: "delivery", kind: "metric", ref: `filler_rate=${metrics.fillerRate}` },
+      { id: "metric-speaking-ratio", dimension: "delivery", kind: "metric", ref: `speaking_ratio=${metrics.speakingRatio}` },
+    );
+  }
+
   const result: EvaluationResult = {
     contractVersion: EVALUATION_CONTRACT_VERSION,
     answerId: params.answerId,
@@ -254,7 +310,7 @@ export async function evaluateV2(
       focusDimension: weakest.dimension,
       focusBand: weakest.band,
     },
-    evidenceRefs: [],
+    evidenceRefs,
     versions: evaluationVersionsSchema.parse({
       provider: model.name,
       model: model.name === "openrouter" ? "chat-json" : model.name,

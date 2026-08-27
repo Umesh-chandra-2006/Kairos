@@ -17,14 +17,24 @@ export const submissionsRouter: Router = Router();
 // Raw-body upload: no multipart dependency; the browser sends the recorded
 // blob as the request body. Metadata travels as query parameters.
 const rawAudio: RequestHandler = express.raw({
-  type: ["audio/*", "video/webm"],
-  limit: "15mb",
+  type: [
+    "audio/webm",
+    "audio/webm;codecs=opus",
+    "video/webm",
+    "audio/ogg",
+    "audio/ogg;codecs=opus",
+    "audio/mp4",
+    "audio/mpeg",
+    "audio/wav",
+    "audio/x-wav",
+  ],
+  limit: "10mb",
 });
 
 const voiceMetaSchema = z.object({
   questionId: z.coerce.number().int().positive(),
   idempotencyKey: z.string().min(8).max(64),
-  clientDurationMs: z.coerce.number().int().min(0).max(120_000).optional(),
+  clientDurationMs: z.coerce.number().int().min(0).max(90_000).optional(),
 });
 
 submissionsRouter.use(requireAuth);
@@ -46,6 +56,17 @@ submissionsRouter.post(
     const audio = req.body as Buffer;
     if (!Buffer.isBuffer(audio) || audio.length === 0) {
       throw AppError.validation("Request body must contain audio bytes");
+    }
+
+    // P0-6: Validate Content-Type against a strict allowlist.
+    const ALLOWED_CONTENT_TYPES = new Set([
+      "audio/webm", "audio/webm;codecs=opus", "video/webm",
+      "audio/ogg", "audio/ogg;codecs=opus",
+      "audio/mp4", "audio/mpeg", "audio/wav", "audio/x-wav",
+    ]);
+    const ct = String(req.headers["content-type"] ?? "").toLowerCase().split(";")[0]!.trim();
+    if (!ALLOWED_CONTENT_TYPES.has(ct)) {
+      throw AppError.validation(`Unsupported audio format: ${ct}. Allowed: webm, ogg, mp4, mpeg, wav`);
     }
 
     const db = getDb();

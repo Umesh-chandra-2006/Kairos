@@ -23,6 +23,7 @@ const baseParams = {
   transcript: TRANSCRIPT,
   words: ASR_WORDS,
   durationMs: 500 + ASR_WORDS.length * 400,
+  hasRealTimestamps: true,
 };
 
 describe("evaluateV2", () => {

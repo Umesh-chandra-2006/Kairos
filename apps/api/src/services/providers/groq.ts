@@ -75,8 +75,10 @@ export class GroqProvider implements ASRProvider {
         confidence: 0.9,
       }));
 
+    let hasRealTimestamps = words.length > 0;
     if (words.length === 0 && segments.length > 0) {
       words = deriveWordsFromSegments(segments);
+      hasRealTimestamps = false;
     }
 
     return {
@@ -87,6 +89,7 @@ export class GroqProvider implements ASRProvider {
       durationMs: Math.round((json.duration ?? lastEnd(segments, words)) * 1000),
       provider: this.name,
       modelVersion: this.modelVersion,
+      hasRealTimestamps,
     };
   }
 }

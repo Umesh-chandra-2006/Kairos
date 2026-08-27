@@ -212,7 +212,14 @@ export function registerEvalWorker(): void {
     try {
       const [answer] = await db.select().from(answers).where(eq(answers.id, job.answerId));
       if (!answer?.audioKey) {
+        // P0-5: Without audio, the job is unrecoverable — mark as failed
+        // so the row doesn't sit in "processing" forever.
         logger.warn({ job }, "voice job: answer or audio missing");
+        await db
+          .update(answers)
+          .set({ status: "failed", errorMessage: "Audio data missing or not found" })
+          .where(and(eq(answers.id, job.answerId), eq(answers.status, "processing")));
+        await hub.publish(channel, { type: "error", message: "Audio data missing or not found" });
         return;
       }
       const [question] = await db.select().from(questions).where(eq(questions.id, job.questionId));
@@ -227,6 +234,11 @@ export function registerEvalWorker(): void {
       const asr = await getASRProvider();
       const asrResult = await asr.transcribe(audio, "audio/webm");
 
+      // P0-4: Enforce 90-second limit on actual media duration (not just client hint).
+      if (asrResult.durationMs > 90_000) {
+        throw new Error(`Audio duration ${Math.round(asrResult.durationMs / 1000)}s exceeds 90s limit`);
+      }
+
       const language = checkLanguage(asrResult.transcript);
       await db
         .update(answers)
@@ -236,6 +248,42 @@ export function registerEvalWorker(): void {
           languageBlocked: !language.suitable,
         })
         .where(and(eq(answers.id, job.answerId), eq(answers.status, "processing")));
+
+      // P0-1: Actually enforce language rejection — do NOT evaluate unsuitable submissions.
+      if (!language.suitable) {
+        await db
+          .update(answers)
+          .set({
+            status: "completed",
+            score: 0,
+            feedback: `Evaluation blocked: ${language.rejectionReason}. Please answer in English.`,
+            languageBlocked: true,
+          })
+          .where(and(eq(answers.id, job.answerId), eq(answers.status, "processing")));
+
+        await hub.publish(channel, {
+          type: "voice_done",
+          overallBand: "needs_work",
+          contentBand: "needs_work",
+          structureBand: "needs_work",
+          deliveryBand: "needs_work",
+          nextAction: { instruction: "Please answer in English. Avoid Hindi or mixed-language responses.", focusDimension: "content", focusBand: "needs_work" },
+          transcript: asrResult.transcript,
+          score: 0,
+          languageBlocked: true,
+        });
+
+        logDomainEvent("eval_completed", {
+          userId: job.userId,
+          answerId: job.answerId,
+          kind: "voice",
+          durationMs: Date.now() - startedAt,
+          provider: asr.name,
+          outcome: `language_rejected: ${language.rejectionReason}`,
+        });
+        recordEvalCompleted(Date.now() - startedAt);
+        return;
+      }
 
       await hub.publish(channel, { type: "voice_status", stage: "evaluating" });
 
@@ -248,6 +296,7 @@ export function registerEvalWorker(): void {
           transcript: asrResult.transcript,
           words: asrResult.words,
           durationMs: asrResult.durationMs,
+          hasRealTimestamps: asrResult.hasRealTimestamps,
         },
         getModelForV2(),
       );

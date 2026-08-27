@@ -79,6 +79,10 @@ export interface ASRResult {
   durationMs: number;
   provider: string;
   modelVersion: string;
+  /** True when the provider returned real word-level timestamps. False when
+   *  words were interpolated from segment boundaries (synthetic). Delivery
+   *  metrics are unreliable with synthetic timestamps and must be skipped. */
+  hasRealTimestamps: boolean;
 }
 
 export interface ASRTokensOpts {

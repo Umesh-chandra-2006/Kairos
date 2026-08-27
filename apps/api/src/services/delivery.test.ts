@@ -41,6 +41,31 @@ describe("computeDeliveryMetrics", () => {
     expect(m.speechRate).toBe(5);
     expect(m.fillerRate).toBe(3);
   });
+
+  it("merges overlapping word intervals before computing speakingRatio", () => {
+    // Two words that fully overlap (0–1000 and 200–800), plus a non-overlapping word (1200–1600).
+    const ws: ASRWord[] = [
+      { word: "hello", startMs: 0, endMs: 1000, confidence: 0.9 },
+      { word: "world", startMs: 200, endMs: 800, confidence: 0.9 },
+      { word: "test", startMs: 1200, endMs: 1600, confidence: 0.9 },
+    ];
+    const m = computeDeliveryMetrics(ws, 2000);
+    // Merged intervals: [0,1000] + [1200,1600] = 1400ms active out of 2000ms.
+    expect(m.speakingRatio).toBe(0.7);
+    // Without merging, it would be (1000 + 600 + 400) / 2000 = 1.0 → clamped to 1.0.
+    // With merging, it's correctly 1400/2000 = 0.7.
+    expect(m.speakingRatio).toBeLessThan(1);
+  });
+
+  it("handles fully contained overlaps (one word inside another)", () => {
+    const ws: ASRWord[] = [
+      { word: "outer", startMs: 0, endMs: 2000, confidence: 0.9 },
+      { word: "inner", startMs: 500, endMs: 1000, confidence: 0.9 },
+    ];
+    const m = computeDeliveryMetrics(ws, 2500);
+    // Merged: [0,2000] → 2000ms active.
+    expect(m.speakingRatio).toBe(0.8);
+  });
 });
 
 describe("bandDelivery thresholds", () => {

@@ -107,6 +107,7 @@ export class LocalWhisperProvider implements ASRProvider {
       durationMs: parsed.durationMs,
       provider: this.name,
       modelVersion: this.modelVersion,
+      hasRealTimestamps: true,
     };
   }
 }

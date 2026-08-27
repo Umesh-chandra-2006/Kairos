@@ -35,9 +35,21 @@ export function computeDeliveryMetrics(words: ASRWord[], durationMs: number): De
     return { speechRate: 0, fillerRate: 0, speakingRatio: 0, pauses: { count: 0, totalMs: 0, avgMs: 0, longestMs: 0 } };
   }
 
+  // P0-7: Merge overlapping intervals before calculating active speech time.
+  // Without merging, overlapping word timestamps double-count that time,
+  // inflating the speakingRatio and distorting delivery metrics.
+  const merged: Array<{ startMs: number; endMs: number }> = [];
+  for (const w of clean) {
+    const last = merged.at(-1);
+    if (last && w.startMs <= last.endMs) {
+      last.endMs = Math.max(last.endMs, w.endMs);
+    } else {
+      merged.push({ startMs: w.startMs, endMs: w.endMs });
+    }
+  }
   let activeSpeechMs = 0;
-  for (const w of clean) activeSpeechMs += Math.max(w.endMs - w.startMs, 0);
-  // Clamp active speech to the audio duration (overlapping/rounded timestamps).
+  for (const iv of merged) activeSpeechMs += Math.max(iv.endMs - iv.startMs, 0);
+  // Clamp active speech to the audio duration.
   activeSpeechMs = Math.min(activeSpeechMs, durationMs);
 
   let pauseCount = 0;
