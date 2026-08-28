@@ -509,14 +509,52 @@ select:focus,
   font-size: 14px;
 }
 
+.verify-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin: 8px 0 4px;
+}
+.verify-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  line-height: 1;
+  background: var(--border);
+  color: var(--muted);
+  animation: verify-spin 1s linear infinite;
+}
+.verify-icon-ok {
+  background: color-mix(in srgb, var(--success) 15%, transparent);
+  color: var(--success);
+  animation: none;
+}
+.verify-icon-error {
+  background: color-mix(in srgb, var(--danger) 15%, transparent);
+  color: var(--danger);
+  animation: none;
+}
+.verify-message {
+  margin: 0;
+  font-size: 15px;
+}
+@keyframes verify-spin {
+  from { opacity: 0.5; }
+  to { opacity: 1; }
+}
 .verify-actions {
   display: flex;
   justify-content: center;
-  margin-top: 18px;
+  margin-top: 20px;
 }
 .verify-actions .btn {
   display: inline-block;
   text-align: center;
+  min-width: 160px;
 }
 
 .link-row {

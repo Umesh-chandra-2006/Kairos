@@ -13,34 +13,42 @@ export function VerifyEmail() {
   useEffect(() => {
     if (!token) {
       setStatus("error");
-      setMessage("Missing verification token.");
+      setMessage("This verification link is invalid. Please request a new one.");
       return;
     }
     api
       .verifyEmail(token)
       .then(() => {
         setStatus("ok");
-        setMessage("Email verified! You're all set.");
+        setMessage("Your email is verified. Redirecting to sign in…");
+        const t = setTimeout(() => navigate("/login", { replace: true }), 1800);
+        return () => clearTimeout(t);
       })
       .catch((err) => {
         setStatus("error");
         setMessage(err instanceof Error ? err.message : "Verification failed.");
       });
-  }, [token]);
+  }, [token, navigate]);
 
   return (
-    <AuthShell title="Email verification">
-      <p className={status === "error" ? "auth-status-error" : "auth-status-ok"} style={{ textAlign: "center" }}>
-        {message}
-      </p>
+    <AuthShell title="Email verification" subtitle={status === "working" ? "Just a moment…" : undefined}>
+      <div className="verify-status" aria-live="polite">
+        <span
+          className={`verify-icon ${status === "ok" ? "verify-icon-ok" : ""} ${status === "error" ? "verify-icon-error" : ""}`}
+          aria-hidden="true"
+        >
+          {status === "ok" ? "✓" : status === "error" ? "!" : "…"}
+        </span>
+        <p className={`auth-status-${status === "error" ? "error" : "ok"} verify-message`}>{message}</p>
+      </div>
       <div className="verify-actions">
         {status === "ok" ? (
-          <button className="btn btn-primary" onClick={() => navigate("/")}>
-            Continue to Kairos
+          <button className="btn btn-primary" onClick={() => navigate("/login")}>
+            Go to sign in
           </button>
         ) : status === "error" ? (
           <Link to="/login" className="btn btn-primary">
-            Go to sign in
+            Back to sign in
           </Link>
         ) : (
           <p className="muted" style={{ textAlign: "center", marginTop: 8 }}>
@@ -48,6 +56,15 @@ export function VerifyEmail() {
           </p>
         )}
       </div>
+      {status === "error" && (
+        <p className="auth-footer" style={{ marginTop: 16, fontSize: 13 }}>
+          Didn't get a link?{" "}
+          <Link to="/login" style={{ color: "var(--brand-1)", fontWeight: 600 }}>
+            Sign in
+          </Link>{" "}
+          and request it from your dashboard.
+        </p>
+      )}
     </AuthShell>
   );
 }
