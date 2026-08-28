@@ -62,10 +62,14 @@ authRouter.post(
       return;
     }
 
-    // Cloudflare Turnstile verification (when sitekey is configured)
+    // Cloudflare Turnstile verification (when sitekey is configured).
+    // Enforced only outside development so LAN/build-time testing isn't blocked:
+    // Turnstile validates against registered hostnames (e.g. localhost), and a
+    // phone hitting a dev server over a raw LAN IP can't get a valid token.
     const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
+    const isDev = process.env.NODE_ENV === "development";
     const turnstileToken = (req.body as Record<string, unknown>).turnstileToken as string | undefined;
-    if (turnstileSecret) {
+    if (turnstileSecret && !isDev) {
       if (!turnstileToken) {
         res.status(400).json({ error: { code: "VALIDATION", message: "CAPTCHA verification required", retryable: false } });
         return;
@@ -151,6 +155,25 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     const db = getDb();
     await authService.verifyEmail(db, (req.body as { token: string }).token);
+    res.json({ ok: true });
+  }),
+);
+
+// Resend the email-verification link (auth-protected; must not be verified yet).
+authRouter.post(
+  "/verify-email/resend",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const db = getDb();
+    const result = await authService.resendVerification(db, req.userId!);
+    if (result.status === "already_verified") {
+      res.status(400).json({ error: { code: "VALIDATION", message: "Email already verified" } });
+      return;
+    }
+    if (result.status === "send_failed") {
+      res.status(500).json({ error: { code: "EMAIL_SEND_FAILED", message: "We couldn't send the verification email right now. Please try again." } });
+      return;
+    }
     res.json({ ok: true });
   }),
 );

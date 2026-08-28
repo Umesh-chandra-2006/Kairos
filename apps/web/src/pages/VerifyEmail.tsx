@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import { AuthShell } from "../components/forms";
 
 export function VerifyEmail() {
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const token = params.get("token") ?? "";
   const [status, setStatus] = useState<"working" | "ok" | "error">("working");
   const [message, setMessage] = useState("Verifying your email…");
@@ -29,9 +30,23 @@ export function VerifyEmail() {
 
   return (
     <AuthShell title="Email verification">
-      <p className={status === "error" ? "auth-status-error" : "auth-status-ok"}>{message}</p>
-      <div className="link-row">
-        <Link to="/login">Continue to sign in</Link>
+      <p className={status === "error" ? "auth-status-error" : "auth-status-ok"} style={{ textAlign: "center" }}>
+        {message}
+      </p>
+      <div className="verify-actions">
+        {status === "ok" ? (
+          <button className="btn btn-primary" onClick={() => navigate("/")}>
+            Continue to Kairos
+          </button>
+        ) : status === "error" ? (
+          <Link to="/login" className="btn btn-primary">
+            Go to sign in
+          </Link>
+        ) : (
+          <p className="muted" style={{ textAlign: "center", marginTop: 8 }}>
+            This usually takes a few seconds…
+          </p>
+        )}
       </div>
     </AuthShell>
   );

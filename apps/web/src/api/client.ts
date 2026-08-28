@@ -186,6 +186,7 @@ export const api = {
   resetPassword: (token: string, password: string) =>
     api.post<{ ok: true }>("/api/auth/reset-password", { token, password }),
   verifyEmail: (token: string) => api.post<{ ok: true }>("/api/auth/verify-email", { token }),
+  resendVerification: () => api.post<{ ok: true }>("/api/auth/verify-email/resend", {}),
   changePassword: (currentPassword: string, newPassword: string) =>
     api.post<{ ok: true }>("/api/auth/change-password", { currentPassword, newPassword }),
 

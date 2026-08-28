@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { registerPasswordHint, validateRegisterForm } from "./validators";
+import {
+  passwordConditions,
+  passwordStrength,
+  registerPasswordHint,
+  validateRegisterForm,
+} from "./validators";
 
 describe("validateRegisterForm", () => {
   it("accepts a valid registration", () => {
@@ -59,5 +64,33 @@ describe("registerPasswordHint", () => {
     expect(registerPasswordHint()).toContain("8+ characters");
     expect(registerPasswordHint()).toContain("uppercase");
     expect(registerPasswordHint()).toContain("number");
+  });
+});
+
+describe("passwordConditions", () => {
+  it("tracks each requirement independently", () => {
+    const conditions = passwordConditions("pass");
+    const length = conditions.find((c) => c.key === "length")!;
+    const lower = conditions.find((c) => c.key === "lower")!;
+    expect(length.met).toBe(false);
+    expect(lower.met).toBe(true);
+  });
+
+  it("flags all conditions for a fully valid password", () => {
+    const conditions = passwordConditions("Password1");
+    expect(conditions.every((c) => c.met)).toBe(true);
+  });
+});
+
+describe("passwordStrength", () => {
+  it("returns empty for no password", () => {
+    expect(passwordStrength("")).toBe("empty");
+  });
+
+  it("escalates from weak to strong as conditions are met", () => {
+    expect(passwordStrength("p")).toBe("weak");
+    expect(passwordStrength("pppppppp")).toBe("fair"); // length + lower
+    expect(passwordStrength("Password")).toBe("medium"); // length + lower + upper
+    expect(passwordStrength("Password1")).toBe("strong"); // all four
   });
 });

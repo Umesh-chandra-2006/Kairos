@@ -43,3 +43,31 @@ export function validateRegisterForm(input: {
 export function registerPasswordHint(): string {
   return "8+ characters with a lowercase letter, an uppercase letter and a number.";
 }
+
+export type PasswordStrength = "empty" | "weak" | "fair" | "medium" | "strong";
+
+export interface PasswordCondition {
+  key: string;
+  label: string;
+  met: boolean;
+}
+
+/** Live conditions used for the password checklist (must mirror validateRegisterForm). */
+export function passwordConditions(password: string): PasswordCondition[] {
+  return [
+    { key: "length", label: "At least 8 characters", met: password.length >= 8 },
+    { key: "lower", label: "A lowercase letter", met: /[a-z]/.test(password) },
+    { key: "upper", label: "An uppercase letter", met: /[A-Z]/.test(password) },
+    { key: "digit", label: "A number", met: /[0-9]/.test(password) },
+  ];
+}
+
+/** 0-4 score mirroring the count of met conditions; used for the strength bar. */
+export function passwordStrength(password: string): PasswordStrength {
+  if (!password) return "empty";
+  const met = passwordConditions(password).filter((c) => c.met).length;
+  if (met <= 1) return "weak";
+  if (met === 2) return "fair";
+  if (met === 3) return "medium";
+  return "strong";
+}

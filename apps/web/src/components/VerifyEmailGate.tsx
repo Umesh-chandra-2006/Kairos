@@ -18,7 +18,7 @@ export function VerifyEmailGate({ children }: { children: React.ReactNode }) {
     setError(null);
     setResent(false);
     try {
-      await api.post("/api/auth/forgot-password", { email: user!.email });
+      await api.resendVerification();
       setResent(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not resend");
@@ -29,8 +29,8 @@ export function VerifyEmailGate({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="center-screen">
-      <div className="card">
-        <h2>Verify your email</h2>
+      <div className="card auth-verify-card">
+        <h2 style={{ marginTop: 0 }}>Verify your email</h2>
         <p className="muted" style={{ margin: "12px 0" }}>
           We sent a verification link to <strong>{user.email}</strong>. Please verify your email to continue.
         </p>

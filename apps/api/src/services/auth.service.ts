@@ -145,6 +145,26 @@ export const authService = {
     await db.update(users).set({ emailVerified: true }).where(eq(users.id, row.userId));
   },
 
+  /**
+   * Re-issues a fresh email-verification token and sends it. Auth-protected.
+   * Returns a discriminated status so callers can distinguish "already verified"
+   * from "token issued but email delivery failed".
+   */
+  async resendVerification(db: DB, userId: number): Promise<{ status: "sent" } | { status: "already_verified" } | { status: "send_failed" }> {
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) throw AppError.notFound("User not found");
+    if (user.emailVerified) return { status: "already_verified" };
+    const token = generateOpaqueToken();
+    await db.insert(emailTokens).values({
+      userId,
+      tokenHash: hashToken(token),
+      type: "verify_email",
+      expiresAt: new Date(Date.now() + EMAIL_TOKEN_TTL_MS),
+    });
+    const sent = await sendVerificationEmail(user.email, token);
+    return sent ? { status: "sent" } : { status: "send_failed" };
+  },
+
   async requestPasswordReset(db: DB, email: string): Promise<void> {
     const user = await findUserByEmail(db, email);
     if (!user) return; // Never leak whether an email exists.
