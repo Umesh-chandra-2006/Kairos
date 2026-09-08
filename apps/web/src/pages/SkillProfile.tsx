@@ -66,7 +66,7 @@ function RadarChart({ skills }: { skills: SkillDimension[] }) {
       })}
       <polygon
         points={points.map((p) => `${p.x},${p.y}`).join(" ")}
-        fill="rgba(79, 70, 229, 0.15)"
+        fill="rgba(138, 100, 21, 0.15)"
         stroke="var(--brand-1)"
         strokeWidth="2"
       />

@@ -13,8 +13,11 @@ export class AppError extends Error {
     this.name = "AppError";
   }
 
-  static validation(details?: unknown): AppError {
-    return new AppError(400, ERROR_CODES.VALIDATION, undefined, details);
+  /** Pass `message` for a human-readable reason, or `details` for structured zod issues. */
+  static validation(messageOrDetails?: unknown): AppError {
+    return typeof messageOrDetails === "string"
+      ? new AppError(400, ERROR_CODES.VALIDATION, messageOrDetails)
+      : new AppError(400, ERROR_CODES.VALIDATION, undefined, messageOrDetails);
   }
 
   static unauthorized(message?: string): AppError {

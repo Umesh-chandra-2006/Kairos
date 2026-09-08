@@ -131,6 +131,9 @@ export const authService = {
     await db.update(refreshTokens).set({ revokedAt: new Date() }).where(eq(refreshTokens.userId, userId));
   },
 
+  /** Idempotent: re-using an already-consumed verify token for a verified user is a success,
+   *  since the outcome (email verified) is already achieved. A genuinely unknown/expired token
+   *  (for an unverified user) still fails. */
   async verifyEmail(db: DB, token: string): Promise<void> {
     const [row] = await db
       .select()
@@ -138,11 +141,20 @@ export const authService = {
       .where(
         and(eq(emailTokens.tokenHash, hashToken(token)), eq(emailTokens.type, "verify_email"), isNull(emailTokens.usedAt)),
       );
-    if (!row || row.expiresAt.getTime() < Date.now()) {
-      throw AppError.validation("Invalid or expired verification link");
+    if (row && row.expiresAt.getTime() >= Date.now()) {
+      await db.update(emailTokens).set({ usedAt: new Date() }).where(eq(emailTokens.id, row.id));
+      await db.update(users).set({ emailVerified: true }).where(eq(users.id, row.userId));
+      return;
     }
-    await db.update(emailTokens).set({ usedAt: new Date() }).where(eq(emailTokens.id, row.id));
-    await db.update(users).set({ emailVerified: true }).where(eq(users.id, row.userId));
+    // Token not found/unused or expired: if the email behind this token is already verified,
+    // treat the request as a successful no-op (e.g. the link was clicked twice).
+    const [used] = await db
+      .select()
+      .from(emailTokens)
+      .where(and(eq(emailTokens.tokenHash, hashToken(token)), eq(emailTokens.type, "verify_email")));
+    const [user] = used ? await db.select().from(users).where(eq(users.id, used.userId)) : [];
+    if (user?.emailVerified) return;
+    throw AppError.validation("Invalid or expired verification link");
   },
 
   /**

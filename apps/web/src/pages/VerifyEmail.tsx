@@ -1,34 +1,44 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 import { AuthShell } from "../components/forms";
 
 export function VerifyEmail() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const token = params.get("token") ?? "";
   const [status, setStatus] = useState<"working" | "ok" | "error">("working");
   const [message, setMessage] = useState("Verifying your email…");
+  const firedRef = useRef(false);
 
   useEffect(() => {
+    if (firedRef.current) return;
     if (!token) {
       setStatus("error");
       setMessage("This verification link is invalid. Please request a new one.");
       return;
     }
+    firedRef.current = true;
     api
       .verifyEmail(token)
-      .then(() => {
+      .then(async () => {
         setStatus("ok");
-        setMessage("Your email is verified. Redirecting to sign in…");
-        const t = setTimeout(() => navigate("/login", { replace: true }), 1800);
-        return () => clearTimeout(t);
+        setMessage("Your email is verified. Taking you to sign in…");
+        // Best-effort: clear the register-time session so the login form shows.
+        try {
+          await logout();
+        } catch {
+          /* session may already be gone */
+        }
+        setTimeout(() => navigate("/login", { replace: true }), 1600);
       })
       .catch((err) => {
         setStatus("error");
         setMessage(err instanceof Error ? err.message : "Verification failed.");
       });
-  }, [token, navigate]);
+  }, [token, navigate, logout]);
 
   return (
     <AuthShell title="Email verification" subtitle={status === "working" ? "Just a moment…" : undefined}>

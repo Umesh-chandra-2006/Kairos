@@ -171,6 +171,29 @@ pnpm build                                  # production builds
 pnpm deploy:prod                            # Docker Compose prod stack
 ```
 
+### Android release APK
+
+`apps/mobile` is an Expo SDK 54 app (New Architecture + Hermes) that can be
+built into a standalone, sideloadable **release APK** — no Metro/dev server
+needed on the phone. The full, verified recipe for Windows (junction remaps,
+CMake pins, `EXPO_NO_METRO_WORKSPACE_ROOT`, re-bundle steps) lives in
+[`docs/mobile-release-build.md`](docs/mobile-release-build.md).
+
+Quick version:
+
+```bash
+# build (wrapper injects ANDROID_HOME, JDK, CMAKE_VERSION, EXPO_NO_METRO_WORKSPACE_ROOT)
+gradle_build_release.cmd          # runs :app:assembleRelease on apps/mobile/android
+
+# deliver over LAN, install on phone:
+#   http://<pc-lan-ip>:8080/app-release.apk
+```
+
+Output: `apps/mobile/android/app/build/outputs/apk/release/app-release.apk`.
+API base URL is a compile-time constant from `apps/mobile/.env`
+(`EXPO_PUBLIC_API_URL`), so re-bundle (`createBundleReleaseJsAndAssets`) after
+changing it.
+
 ---
 
 ## Environment variables

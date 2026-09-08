@@ -1,5 +1,5 @@
 // Kairos Mobile — Design Token System
-// Source of truth: design.md
+// Source of truth: docs/ui/v0-fable5-design-doc.md + approved web palette
 
 export interface ColorPalette {
   bg: string;
@@ -16,45 +16,50 @@ export interface ColorPalette {
 }
 
 export const darkColors: ColorPalette = {
-  bg: "#0A0E13",
-  surface: "#141A22",
-  surface2: "#1B222C",
-  text: "#ECEFF3",
-  textDim: "#8A93A1",
-  line: "#232B35",
-  accent: "#E8B84B",       // amber — doing today's thing
-  accentInk: "#2A1F05",    // near-black text on amber buttons
-  accent2: "#4FC2B8",      // teal — AI evaluation / analytics
-  danger: "#E8735F",
+  bg: "#0A0A0A",
+  surface: "#121212",
+  surface2: "#1F1B12",
+  text: "#F5F1E6",
+  textDim: "#8A8378",
+  line: "#1F1B12",
+  accent: "#E3B341",       // warm amber — doing today's thing
+  accentInk: "#241C08",    // near-black text on amber buttons
+  accent2: "#E3B341",      // AI evaluation / analytics (same warm accent)
+  danger: "#C0433B",
   shadow: "rgba(0,0,0,0.5)",
 };
 
 export const lightColors: ColorPalette = {
-  bg: "#F1F1EE",
-  surface: "#FFFFFF",
-  surface2: "#F7F6F2",
-  text: "#181C22",
-  textDim: "#6B7280",
-  line: "#E3E2DC",
-  accent: "#C6862A",
-  accentInk: "#FFF7E6",
-  accent2: "#2E8F86",
-  danger: "#C6482F",
-  shadow: "rgba(20,20,10,0.12)",
+  bg: "#F7F4EC",
+  surface: "#FBF8F0",
+  surface2: "#F1EDE0",
+  text: "#1C1811",
+  textDim: "#6B6355",
+  line: "#E4DDC9",
+  accent: "#8A6415",       // warm amber (brown-amber on cream paper)
+  accentInk: "#FBF4E1",
+  accent2: "#8A6415",
+  danger: "#C0433B",
+  shadow: "rgba(28,24,17,0.12)",
 };
 
-// Typography families — loaded via expo-font in _layout.tsx
+// Typography families — loaded via expo-font in _layout.tsx.
+// Every value is the exact registered family name required by React Native.
 export const fonts = {
-  display: "SpaceGrotesk",        // Space Grotesk — screen titles, headings
-  displayMedium: "SpaceGrotesk_500Medium",
-  displaySemiBold: "SpaceGrotesk_600SemiBold",
-  displayBold: "SpaceGrotesk_700Bold",
-  body: "Inter",                  // Inter — body, labels, buttons
+  // Playfair Display — premium serif for titles/headings (marks usability + luxury)
+  display: "PlayfairDisplay_500Medium",
+  displayMedium: "PlayfairDisplay_500Medium",
+  displaySemiBold: "PlayfairDisplay_600SemiBold",
+  displayBold: "PlayfairDisplay_700Bold",
+  displayItalic: "PlayfairDisplay_500Medium_Italic",
+  // Inter — body, labels, buttons
+  body: "Inter_400Regular",
   bodyMedium: "Inter_400Regular",
   bodySemiBold: "Inter_600SemiBold",
   bodyBold: "Inter_700Bold",
-  sans: "Inter",                  // Alias for body
-  mono: "IBMPlexMono",            // IBM Plex Mono — numbers, scores, timers
+  sans: "Inter_400Regular",
+  // IBM Plex Mono — numbers, scores, timers, micro-caps labels
+  mono: "IBMPlexMono_400Regular",
   monoRegular: "IBMPlexMono_400Regular",
   monoMedium: "IBMPlexMono_500Medium",
   monoSemiBold: "IBMPlexMono_600SemiBold",
@@ -82,9 +87,9 @@ export const spacing = {
 
 // Border radii
 export const radii = {
-  sm: 10,    // buttons, small controls
-  md: 16,    // cards
-  lg: 26,    // screen containers, sheets
+  sm: 7,     // buttons, small controls
+  md: 12,    // cards
+  lg: 16,    // screen containers, sheets
   full: 999, // pills
 } as const;
 

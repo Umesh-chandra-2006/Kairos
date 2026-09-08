@@ -330,7 +330,7 @@ function CategoryChip({
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 20, paddingBottom: 40, paddingTop: 8 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
-  subtitle: { fontFamily: "IBMPlexSans_400Regular", fontSize: 14, lineHeight: 20, marginBottom: 20 },
+  subtitle: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20, marginBottom: 20 },
   groupLabel: {
     fontFamily: "IBMPlexMono_600SemiBold",
     fontSize: 9,
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   chipIcon: { fontFamily: "IBMPlexMono_600SemiBold", fontSize: 13 },
-  chipLabel: { fontFamily: "IBMPlexSans_400Regular", fontSize: 13, fontWeight: "500" },
+  chipLabel: { fontFamily: fonts.body, fontSize: 13, fontWeight: "500" },
   surpriseBtn: {
     borderWidth: 1,
     borderRadius: radii.md,
@@ -363,17 +363,17 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   questionText: {
-    fontFamily: "IBMPlexSans_400Regular",
+    fontFamily: fonts.displaySemiBold,
     fontSize: 17,
     fontWeight: "600",
     lineHeight: 25,
     marginBottom: 10,
   },
-  hint: { fontFamily: "IBMPlexSans_400Regular", fontSize: 13, lineHeight: 19, marginBottom: 4 },
+  hint: { fontFamily: fonts.body, fontSize: 13, lineHeight: 19, marginBottom: 4 },
   stream: { fontFamily: "IBMPlexMono_400Regular", fontSize: 13, lineHeight: 20 },
   scoreRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 4 },
   scoreText: { fontFamily: "IBMPlexMono_600SemiBold", fontSize: 28, fontWeight: "700" },
-  feedback: { fontFamily: "IBMPlexSans_400Regular", fontSize: 15, lineHeight: 22 },
-  modelAnswer: { fontFamily: "IBMPlexSans_400Regular", fontSize: 14, lineHeight: 21 },
-  error: { fontFamily: "IBMPlexSans_400Regular", fontSize: 14, marginBottom: 12 },
+  feedback: { fontFamily: fonts.body, fontSize: 15, lineHeight: 22 },
+  modelAnswer: { fontFamily: fonts.body, fontSize: 14, lineHeight: 21 },
+  error: { fontFamily: fonts.body, fontSize: 14, marginBottom: 12 },
 });

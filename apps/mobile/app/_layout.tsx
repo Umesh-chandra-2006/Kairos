@@ -4,11 +4,11 @@ import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import {
-  SpaceGrotesk_500Medium,
-  SpaceGrotesk_600SemiBold,
-  SpaceGrotesk_700Bold,
-  useFonts as useSpaceGrotesk,
-} from "@expo-google-fonts/space-grotesk";
+  PlayfairDisplay_500Medium,
+  PlayfairDisplay_600SemiBold,
+  PlayfairDisplay_700Bold,
+  useFonts as usePlayfair,
+} from "@expo-google-fonts/playfair-display";
 import {
   Inter_400Regular,
   Inter_600SemiBold,
@@ -24,6 +24,29 @@ import {
 import { AuthProvider } from "@/auth/AuthContext";
 import { ThemeProvider, useTheme } from "@/theme/ThemeContext";
 
+const BEACON_URL = "http://192.168.0.116:8080/beacon";
+function beacon(tag: string, extra?: string) {
+  try {
+    const url =
+      BEACON_URL +
+      "?e=" +
+      encodeURIComponent(tag) +
+      (extra ? "&s=" + encodeURIComponent(String(extra)).slice(0, 800) : "");
+    fetch(url, { method: "POST", keepalive: true }).catch(() => {});
+  } catch {}
+}
+
+const errorUtils = (globalThis as any).ErrorUtils;
+if (errorUtils && typeof errorUtils.setGlobalHandler === "function") {
+  const prev = errorUtils.getGlobalHandler();
+  errorUtils.setGlobalHandler((error: unknown, isFatal?: boolean) => {
+    beacon("js-error", ((error as Error)?.message || String(error)) + " fatal=" + !!isFatal);
+    if (prev) prev(error, isFatal);
+  });
+}
+
+beacon("boot-layout");
+
 SplashScreen.preventAutoHideAsync();
 
 // Notifications.setNotificationHandler({
@@ -38,10 +61,10 @@ SplashScreen.preventAutoHideAsync();
 function RootLayoutInner() {
   const { isDark } = useTheme();
 
-  const [sgLoaded] = useSpaceGrotesk({
-    SpaceGrotesk_500Medium,
-    SpaceGrotesk_600SemiBold,
-    SpaceGrotesk_700Bold,
+  const [playfairLoaded] = usePlayfair({
+    PlayfairDisplay_500Medium,
+    PlayfairDisplay_600SemiBold,
+    PlayfairDisplay_700Bold,
   });
   const [interLoaded] = useInter({
     Inter_400Regular,
@@ -54,10 +77,11 @@ function RootLayoutInner() {
     IBMPlexMono_600SemiBold,
   });
 
-  const fontsLoaded = sgLoaded && interLoaded && monoLoaded;
+  const fontsLoaded = playfairLoaded && interLoaded && monoLoaded;
 
   useEffect(() => {
     if (fontsLoaded) {
+      beacon("fonts-loaded");
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
